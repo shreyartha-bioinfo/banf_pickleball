@@ -41,7 +41,8 @@
   <section class="schedule-panel">
     <nav class="tab-bar" aria-label="Sections">
       <button class="tab-btn active" id="tab-btn-schedule" type="button">Schedule &amp; Standings</button>
-      <button class="tab-btn" id="tab-btn-fantasy" type="button">Fantasy</button>
+      <button class="tab-btn" id="tab-btn-fantasy" type="button">Predictor</button>
+      <button class="tab-btn" id="tab-btn-betting" type="button">Betting</button>
     </nav>
 
     <div id="tab-schedule">
@@ -68,7 +69,7 @@
 
     <div id="tab-fantasy" hidden>
       <div class="panel-heading">
-        <h2>Fantasy — Pick the Winners</h2>
+        <h2>Predictor — Pick the Winners</h2>
         <p id="fantasy-deadline-line" class="status-line"></p>
       </div>
 
@@ -96,12 +97,50 @@
 
       <div class="standings" id="fantasy-leaderboard-card">
         <div class="standings-heading">
-          <h3>Fantasy Leaderboard</h3>
+          <h3>Predictor Leaderboard</h3>
           <span class="cut-tag">Most Correct Picks</span>
         </div>
         <p class="hint">One point per correctly picked winner; only completed games count.
         Ties share a rank.</p>
         <div id="fantasy-leaderboard"></div>
+      </div>
+    </div>
+
+    <div id="tab-betting" hidden>
+      <div class="panel-heading">
+        <h2>Betting — Back Your Champion</h2>
+        <p id="betting-deadline-line" class="status-line"></p>
+      </div>
+
+      <div id="betting-form-card" class="fantasy-card">
+        <p class="hint">
+          You have <strong>$100 of virtual money</strong> to spread across the players
+          you think will win the tournament — all on one favourite, or split across
+          several. Bets lock at <strong>10:00 AM (ET), Sunday July 12, 2026</strong>.
+          Submitting again with the same name replaces your earlier bets. Individual
+          bets stay private; only the combined totals feed the word cloud below.
+        </p>
+        <label class="fantasy-name-label" for="betting-name">Your name</label>
+        <input id="betting-name" class="fantasy-name-input" type="text" maxlength="40" placeholder="e.g. Rahul B" autocomplete="name">
+        <div id="betting-players" class="betting-players"></div>
+        <div class="fantasy-actions">
+          <span id="betting-progress" class="fantasy-progress"></span>
+          <button id="betting-submit" class="btn btn-primary" type="button">Place Bets</button>
+        </div>
+        <p id="betting-msg" class="fantasy-msg"></p>
+      </div>
+
+      <div id="betting-locked-card" class="fantasy-card" hidden>
+        <p class="locked-note">🔒 Betting is closed. <span id="betting-entry-count"></span> bettors are in — may the best picks win!</p>
+      </div>
+
+      <div class="standings" id="betting-cloud-card">
+        <div class="standings-heading">
+          <h3>The Money Cloud</h3>
+          <span class="cut-tag">Where the Bets Are</span>
+        </div>
+        <p class="hint" id="betting-pot-line">Player names grow as more money is placed on them.</p>
+        <div id="betting-cloud" class="bet-cloud"></div>
       </div>
     </div>
   </section>

@@ -635,6 +635,96 @@ tr.qualify .rank-chip {
   .pick-options { grid-template-columns: 1fr; }
 }
 
+/* ---------- Betting ---------- */
+
+.betting-players {
+  margin-top: 1.25rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem 1.5rem;
+}
+
+.bet-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.bet-player-name {
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.bet-amount-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.bet-currency {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.bet-input {
+  width: 4.2rem;
+  padding: 0.4rem 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: white;
+  color: var(--text);
+}
+
+.bet-input:focus {
+  outline: 2px solid var(--green-bright);
+  outline-offset: 1px;
+  border-color: var(--green-bright);
+}
+
+.fantasy-progress.over-budget { color: #b3261e; }
+
+.bet-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.35rem 0.9rem;
+  padding: 1.1rem 0.5rem 0.6rem;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.cloud-word {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: default;
+  transition: font-size 0.4s ease, opacity 0.4s ease;
+}
+
+.cloud-navy { color: var(--navy); }
+.cloud-green { color: var(--green); }
+.cloud-soft { color: var(--navy-soft); }
+.cloud-gold { color: var(--gold); }
+
+.cloud-zero {
+  color: var(--line-strong);
+  font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  .betting-players { grid-template-columns: 1fr; }
+}
+
 /* ---------- Sidebar ---------- */
 
 .sidebar {

@@ -7,8 +7,22 @@
 
   const tabBtnSchedule = document.getElementById("tab-btn-schedule");
   const tabBtnFantasy = document.getElementById("tab-btn-fantasy");
+  const tabBtnBetting = document.getElementById("tab-btn-betting");
   const tabSchedule = document.getElementById("tab-schedule");
   const tabFantasy = document.getElementById("tab-fantasy");
+  const tabBetting = document.getElementById("tab-betting");
+
+  const bettingDeadlineLine = document.getElementById("betting-deadline-line");
+  const bettingFormCard = document.getElementById("betting-form-card");
+  const bettingLockedCard = document.getElementById("betting-locked-card");
+  const bettingEntryCount = document.getElementById("betting-entry-count");
+  const bettingNameInput = document.getElementById("betting-name");
+  const bettingPlayersEl = document.getElementById("betting-players");
+  const bettingProgress = document.getElementById("betting-progress");
+  const bettingSubmitBtn = document.getElementById("betting-submit");
+  const bettingMsg = document.getElementById("betting-msg");
+  const bettingPotLine = document.getElementById("betting-pot-line");
+  const bettingCloud = document.getElementById("betting-cloud");
 
   const fantasyDeadlineLine = document.getElementById("fantasy-deadline-line");
   const fantasyFormCard = document.getElementById("fantasy-form-card");
@@ -23,8 +37,10 @@
 
   const AUTO_REFRESH_MS = 45000;
   const QUALIFY_RANK = 8;
+  const BET_BUDGET = 100;
   const PICKS_STORAGE_KEY = "banfFantasyPicks";
   const NAME_STORAGE_KEY = "banfFantasyName";
+  const BETS_STORAGE_KEY = "banfBets";
 
   const notConfigured =
     !CONFIG.SHEET_API_URL || CONFIG.SHEET_API_URL.indexOf("PASTE_YOUR") === 0;
@@ -33,8 +49,12 @@
   let scoresByGame = {};
   // statsByGamePlayer["gameId|Player"] = { aces, faultServes, absent, proxyName }
   let statsByGamePlayer = {};
-  // fantasy: { locked, deadline, entries: [{ name, submittedAt, picks? }] }
+  // fantasy (predictor): { locked, deadline, entries: [{ name, submittedAt, picks? }] }
   let fantasyData = { locked: false, deadline: CONFIG.FANTASY_DEADLINE, entries: [] };
+  // bets: { locked, deadline, entries: [{ name }], totals: { playerName: dollars } }
+  let betsData = { locked: false, deadline: CONFIG.FANTASY_DEADLINE, entries: [], totals: {} };
+
+  const ALL_PLAYERS = Array.from(new Set(GAMES.flatMap((g) => g.team1.concat(g.team2)))).sort();
 
   function escapeHtml(str) {
     return String(str)
@@ -486,19 +506,186 @@
     `;
   }
 
-  // ---------- Tabs ----------
+  // ---------- Betting ----------
 
-  function switchTab(which) {
-    const fantasy = which === "fantasy";
-    tabSchedule.hidden = fantasy;
-    tabFantasy.hidden = !fantasy;
-    tabBtnSchedule.classList.toggle("active", !fantasy);
-    tabBtnFantasy.classList.toggle("active", fantasy);
+  function loadMyBets() {
+    try {
+      return JSON.parse(localStorage.getItem(BETS_STORAGE_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
   }
 
-  tabBtnSchedule.addEventListener("click", () => switchTab("schedule"));
-  tabBtnFantasy.addEventListener("click", () => switchTab("fantasy"));
+  let myBets = loadMyBets();
+  let bettingFormBuilt = false;
+
+  function myBetsTotal() {
+    return ALL_PLAYERS.reduce((sum, p) => sum + (Math.round(Number(myBets[p])) || 0), 0);
+  }
+
+  function updateBettingProgress() {
+    const total = myBetsTotal();
+    bettingProgress.textContent = `Allocated: $${total} / $${BET_BUDGET}`;
+    bettingProgress.classList.toggle("over-budget", total > BET_BUDGET);
+  }
+
+  function buildBettingForm() {
+    if (bettingFormBuilt) return;
+    bettingFormBuilt = true;
+
+    bettingNameInput.value = localStorage.getItem(NAME_STORAGE_KEY) || "";
+
+    bettingPlayersEl.innerHTML = "";
+    ALL_PLAYERS.forEach((player) => {
+      const row = document.createElement("div");
+      row.className = "bet-row";
+      row.innerHTML = `
+        <label class="bet-player-name">${escapeHtml(player)}</label>
+        <div class="bet-amount-wrap">
+          <span class="bet-currency">$</span>
+          <input type="number" class="bet-input" min="0" max="${BET_BUDGET}" step="1" placeholder="0"
+            value="${myBets[player] ? Math.round(Number(myBets[player])) : ""}" aria-label="Bet on ${escapeHtml(player)}">
+        </div>
+      `;
+      const input = row.querySelector(".bet-input");
+      input.addEventListener("input", () => {
+        const v = Math.max(0, Math.round(Number(input.value)) || 0);
+        if (v === 0) delete myBets[player];
+        else myBets[player] = v;
+        localStorage.setItem(BETS_STORAGE_KEY, JSON.stringify(myBets));
+        updateBettingProgress();
+      });
+      bettingPlayersEl.appendChild(row);
+    });
+    updateBettingProgress();
+  }
+
+  function setBettingMsg(text, isError) {
+    bettingMsg.textContent = text;
+    bettingMsg.classList.toggle("error", !!isError);
+  }
+
+  function submitBets() {
+    if (notConfigured) {
+      setBettingMsg("Backend not configured yet.", true);
+      return;
+    }
+    if (fantasyLocked()) {
+      setBettingMsg("Betting is closed — the deadline has passed.", true);
+      renderBetting();
+      return;
+    }
+    const name = bettingNameInput.value.trim();
+    if (!name) {
+      setBettingMsg("Enter your name first.", true);
+      bettingNameInput.focus();
+      return;
+    }
+    const total = myBetsTotal();
+    if (total <= 0) {
+      setBettingMsg("Place at least $1 on someone.", true);
+      return;
+    }
+    if (total > BET_BUDGET) {
+      setBettingMsg(`You only have $${BET_BUDGET} to spread — you've allocated $${total}.`, true);
+      return;
+    }
+
+    localStorage.setItem(NAME_STORAGE_KEY, name);
+    bettingSubmitBtn.disabled = true;
+    setBettingMsg("Placing bets…");
+
+    fetch(CONFIG.SHEET_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "bets", name: name, bets: myBets })
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        bettingSubmitBtn.disabled = false;
+        if (data.status !== "ok") {
+          setBettingMsg(data.message || "Couldn't place bets. Try again.", true);
+          return;
+        }
+        setBettingMsg(`Bets placed for ${name} ✓ — $${total} in play. Resubmit to change them until the deadline.`);
+        loadResults();
+      })
+      .catch((err) => {
+        console.error(err);
+        bettingSubmitBtn.disabled = false;
+        setBettingMsg("Couldn't place bets. Check your connection and try again.", true);
+      });
+  }
+
+  // Deterministic pseudo-shuffle so the cloud looks organic but stable between refreshes.
+  function cloudOrderKey(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 9973;
+    return h;
+  }
+
+  function renderBetCloud() {
+    const totals = betsData.totals || {};
+    const max = Math.max(1, ...ALL_PLAYERS.map((p) => Number(totals[p]) || 0));
+    const pot = ALL_PLAYERS.reduce((sum, p) => sum + (Number(totals[p]) || 0), 0);
+    const colors = ["cloud-navy", "cloud-green", "cloud-soft", "cloud-gold"];
+
+    const ordered = ALL_PLAYERS.slice().sort((a, b) => cloudOrderKey(a) - cloudOrderKey(b));
+
+    bettingCloud.innerHTML = ordered
+      .map((p, i) => {
+        const amount = Number(totals[p]) || 0;
+        // sqrt scale keeps mid-size bets legible; range 0.85rem – 2.5rem
+        const size = amount === 0 ? 0.85 : 0.95 + 1.55 * Math.sqrt(amount / max);
+        return `<span class="cloud-word ${amount === 0 ? "cloud-zero" : colors[i % colors.length]}"
+          style="font-size:${size.toFixed(2)}rem" title="${escapeHtml(p)} — $${amount}">${escapeHtml(p)}</span>`;
+      })
+      .join(" ");
+
+    bettingPotLine.textContent =
+      pot > 0
+        ? `$${pot} placed by ${betsData.entries.length} bettor${betsData.entries.length === 1 ? "" : "s"} — names grow as more money lands on them. Hover a name for its total.`
+        : "Player names grow as more money is placed on them. No bets yet — be the first!";
+  }
+
+  function renderBetting() {
+    const locked = fantasyLocked();
+    if (locked) {
+      bettingDeadlineLine.textContent = "Betting is closed";
+    } else {
+      const deadlineMs = new Date(betsData.deadline || CONFIG.FANTASY_DEADLINE).getTime();
+      bettingDeadlineLine.textContent = `Betting closes in ${formatCountdown(deadlineMs - Date.now())}`;
+    }
+
+    bettingFormCard.hidden = locked;
+    bettingLockedCard.hidden = !locked;
+    if (!locked) {
+      buildBettingForm();
+    } else {
+      bettingEntryCount.textContent = String(betsData.entries.length);
+    }
+    renderBetCloud();
+  }
+
+  // ---------- Tabs ----------
+
+  const tabs = [
+    { btn: tabBtnSchedule, panel: tabSchedule },
+    { btn: tabBtnFantasy, panel: tabFantasy },
+    { btn: tabBtnBetting, panel: tabBetting }
+  ];
+
+  tabs.forEach((tab) => {
+    tab.btn.addEventListener("click", () => {
+      tabs.forEach((t) => {
+        t.panel.hidden = t !== tab;
+        t.btn.classList.toggle("active", t === tab);
+      });
+    });
+  });
+
   fantasySubmitBtn.addEventListener("click", submitFantasyPicks);
+  bettingSubmitBtn.addEventListener("click", submitBets);
 
   // ---------- Data loading ----------
 
@@ -522,6 +709,7 @@
       renderGames();
       renderStandings();
       renderFantasy();
+      renderBetting();
       return;
     }
 
@@ -563,11 +751,21 @@
           };
         }
 
+        if (data.bets) {
+          betsData = {
+            locked: data.bets.locked === true,
+            deadline: data.bets.deadline || CONFIG.FANTASY_DEADLINE,
+            entries: data.bets.entries || [],
+            totals: data.bets.totals || {}
+          };
+        }
+
         hasLoadedOnce = true;
         setStatus(`Live · last refreshed ${new Date().toLocaleTimeString()}`);
         renderGames();
         renderStandings();
         renderFantasy();
+        renderBetting();
       })
       .catch((err) => {
         console.error(err);
@@ -576,6 +774,7 @@
         renderGames();
         renderStandings();
         renderFantasy();
+        renderBetting();
       })
       .finally(() => {
         setTimeout(() => {
@@ -590,5 +789,8 @@
   if (!notConfigured) {
     setInterval(loadResults, AUTO_REFRESH_MS);
   }
-  setInterval(updateFantasyDeadlineLine, 30000);
+  setInterval(() => {
+    updateFantasyDeadlineLine();
+    renderBetting();
+  }, 30000);
 })();

@@ -62,20 +62,34 @@ The site polls the Sheet automatically every 45 seconds, plus there's a manual
 > deployments → edit → New version**) with the latest `apps-script/Code.gs` so the
 > site keeps working with the same URL.
 
-## Fantasy game
+## Predictor game
 
-The **Fantasy** tab lets anyone predict the winner of all 12 league games:
+The **Predictor** tab lets anyone predict the winner of all 12 league games:
 
 - Participants enter their name, tap a team in each game, and submit. Entries are
   stored in a `FantasyPicks` tab of the same Google Sheet (auto-created).
 - Resubmitting with the same name before the deadline replaces that person's picks.
 - Picks lock at **10:00 AM US Eastern, Sunday July 12, 2026** — enforced server-side
   in Apps Script, not just hidden in the page. To change the deadline, update
-  `FANTASY_DEADLINE` in **both** `js/config.js` and `apps-script/Code.gs` (they must
-  match), then redeploy the Apps Script.
+  `FANTASY_DEADLINE` in `js/config.js` and `ENTRY_DEADLINE` in `apps-script/Code.gs`
+  (they must match), then redeploy the Apps Script. The same deadline governs betting.
 - Everyone's picks stay hidden until the deadline passes; after lock, the form is
   replaced by a leaderboard scoring one point per correctly picked winner (only
   completed games count, ties share a rank), updating live as results are entered.
+
+## Betting game
+
+The **Betting** tab gives everyone **$100 of virtual money** to spread across the
+players they think will win the tournament:
+
+- Any split is allowed — $100 on one favourite or a few dollars across many players —
+  as long as the total stays within the budget (whole dollars, at least $1).
+- Bets land in a `Bets` tab of the Sheet (auto-created, one column per player).
+  Resubmitting with the same name before the deadline replaces that person's bets.
+- Betting closes at the same server-enforced deadline as the Predictor.
+- Individual allocations stay private — the API only exposes per-player totals, which
+  feed **The Money Cloud**: a live word cloud where a player's name grows with the
+  total money placed on them (hover a name for its exact total).
 
 ## How standings are ranked
 

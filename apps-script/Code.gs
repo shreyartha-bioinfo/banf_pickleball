@@ -6,11 +6,12 @@
  *
  * Setup: paste this file into Extensions > Apps Script, then run
  * `initializeSheets` once from the editor's Run menu (or just deploy — the
- * first page load will create the sheets automatically). That creates two
- * pre-filled tabs:
+ * first page load will create the sheets automatically). Tabs:
  *   - "Scores": one row per game — fill in Team1Score / Team2Score after each match.
  *   - "PlayerStats": one row per player per game — fill in Aces / FaultServes,
  *     and mark Absent (+ optional ProxyName) if a player was a no-show.
+ *   - "FantasyPicks": predictor entries submitted from the site (auto-managed).
+ *   - "Bets": virtual-money bets submitted from the site (auto-managed).
  *
  * IMPORTANT: this GAMES list must stay identical to js/schedule.js on the site.
  */
@@ -30,15 +31,27 @@ const GAMES = [
   { id: 12, court: "B", team1: ["Swarnendu Sen", "Souvik Ray"], team2: ["Atmadeep Mazumdar", "Bhupal Dhar"] }
 ];
 
-// Fantasy picks lock at this moment (server-enforced). -04:00 = US Eastern in July.
-const FANTASY_DEADLINE = "2026-07-12T10:00:00-04:00";
+// Predictor picks and bets lock at this moment (server-enforced). -04:00 = US Eastern in July.
+const ENTRY_DEADLINE = "2026-07-12T10:00:00-04:00";
+
+const BET_BUDGET = 100; // virtual dollars per bettor
 
 const SCORES_SHEET = "Scores";
 const SCORES_HEADERS = ["GameId", "Court", "Team1", "Team2", "Team1Score", "Team2Score"];
 
-const FANTASY_SHEET = "FantasyPicks";
+const FANTASY_SHEET = "FantasyPicks"; // predictor entries (sheet name kept for compatibility)
 function fantasyHeaders_() {
   return ["Name", "SubmittedAt"].concat(GAMES.map((g) => "G" + g.id));
+}
+
+const BETS_SHEET = "Bets";
+function playersSorted_() {
+  const seen = {};
+  GAMES.forEach((g) => g.team1.concat(g.team2).forEach((p) => (seen[p] = true)));
+  return Object.keys(seen).sort();
+}
+function betsHeaders_() {
+  return ["Name", "SubmittedAt"].concat(playersSorted_());
 }
 
 const STATS_SHEET = "PlayerStats";
@@ -51,8 +64,9 @@ function doGet(e) {
   const scoresSheet = getOrCreateScoresSheet_();
   const statsSheet = getOrCreateStatsSheet_();
   const fantasySheet = getOrCreateFantasySheet_();
+  const betsSheet = getOrCreateBetsSheet_();
 
-  const locked = Date.now() >= new Date(FANTASY_DEADLINE).getTime();
+  const locked = Date.now() >= new Date(ENTRY_DEADLINE).getTime();
   const entries = sheetToObjects_(fantasySheet).map((row) => {
     const entry = { name: row.Name, submittedAt: row.SubmittedAt };
     if (locked) {
@@ -62,26 +76,47 @@ function doGet(e) {
     return entry;
   });
 
+  // Bets: expose only per-player aggregate totals plus who has entered —
+  // individual allocations stay private.
+  const players = playersSorted_();
+  const totals = {};
+  players.forEach((p) => (totals[p] = 0));
+  const betEntries = sheetToObjects_(betsSheet).map((row) => {
+    players.forEach((p) => (totals[p] += Number(row[p]) || 0));
+    return { name: row.Name, submittedAt: row.SubmittedAt };
+  });
+
   return jsonResponse_({
     scores: sheetToObjects_(scoresSheet),
     playerStats: sheetToObjects_(statsSheet),
-    fantasy: { locked: locked, deadline: FANTASY_DEADLINE, entries: entries }
+    fantasy: { locked: locked, deadline: ENTRY_DEADLINE, entries: entries },
+    bets: { locked: locked, deadline: ENTRY_DEADLINE, budget: BET_BUDGET, entries: betEntries, totals: totals }
   });
 }
 
 function doPost(e) {
   const payload = JSON.parse(e.postData.contents);
-  if (payload.action !== "fantasy") {
-    return jsonResponse_({ status: "error", message: "Unknown action" });
-  }
-  if (Date.now() >= new Date(FANTASY_DEADLINE).getTime()) {
-    return jsonResponse_({ status: "error", message: "Picks are locked — the deadline has passed." });
-  }
+  if (payload.action === "fantasy") return handlePredictorPost_(payload);
+  if (payload.action === "bets") return handleBetsPost_(payload);
+  return jsonResponse_({ status: "error", message: "Unknown action" });
+}
 
+function validateEntrant_(payload) {
+  if (Date.now() >= new Date(ENTRY_DEADLINE).getTime()) {
+    return "Entries are locked — the deadline has passed.";
+  }
   const name = String(payload.name || "").trim();
   if (!name || name.length > 40) {
-    return jsonResponse_({ status: "error", message: "Enter a name (max 40 characters)." });
+    return "Enter a name (max 40 characters).";
   }
+  return null;
+}
+
+function handlePredictorPost_(payload) {
+  const entrantError = validateEntrant_(payload);
+  if (entrantError) return jsonResponse_({ status: "error", message: entrantError });
+  const name = String(payload.name).trim();
+
   const picks = payload.picks || {};
   for (let i = 0; i < GAMES.length; i++) {
     const v = Number(picks[GAMES[i].id]);
@@ -90,10 +125,44 @@ function doPost(e) {
     }
   }
 
+  const row = [name, new Date()].concat(GAMES.map((g) => Number(picks[g.id])));
+  upsertRowByName_(getOrCreateFantasySheet_(), name, row);
+  return jsonResponse_({ status: "ok" });
+}
+
+function handleBetsPost_(payload) {
+  const entrantError = validateEntrant_(payload);
+  if (entrantError) return jsonResponse_({ status: "error", message: entrantError });
+  const name = String(payload.name).trim();
+
+  const players = playersSorted_();
+  const bets = payload.bets || {};
+  let total = 0;
+  const amounts = players.map(function (p) {
+    const v = Math.round(Number(bets[p]) || 0);
+    if (v < 0) return NaN;
+    total += v;
+    return v;
+  });
+  if (amounts.some(isNaN)) {
+    return jsonResponse_({ status: "error", message: "Bet amounts must be positive whole dollars." });
+  }
+  if (total <= 0) {
+    return jsonResponse_({ status: "error", message: "Place at least $1 on someone." });
+  }
+  if (total > BET_BUDGET) {
+    return jsonResponse_({ status: "error", message: "You only have $" + BET_BUDGET + " to spread — total is $" + total + "." });
+  }
+
+  const row = [name, new Date()].concat(amounts);
+  upsertRowByName_(getOrCreateBetsSheet_(), name, row);
+  return jsonResponse_({ status: "ok" });
+}
+
+function upsertRowByName_(sheet, name, row) {
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
-    const sheet = getOrCreateFantasySheet_();
     const data = sheet.getDataRange().getValues();
     let rowIndex = -1;
     for (let i = 1; i < data.length; i++) {
@@ -102,7 +171,6 @@ function doPost(e) {
         break;
       }
     }
-    const row = [name, new Date()].concat(GAMES.map((g) => Number(picks[g.id])));
     if (rowIndex === -1) {
       sheet.appendRow(row);
     } else {
@@ -111,14 +179,13 @@ function doPost(e) {
   } finally {
     lock.releaseLock();
   }
-
-  return jsonResponse_({ status: "ok" });
 }
 
 function initializeSheets() {
   getOrCreateScoresSheet_();
   getOrCreateStatsSheet_();
   getOrCreateFantasySheet_();
+  getOrCreateBetsSheet_();
 }
 
 function sheetToObjects_(sheet) {
@@ -177,6 +244,18 @@ function getOrCreateFantasySheet_() {
 
   sheet = ss.insertSheet(FANTASY_SHEET);
   const headers = fantasyHeaders_();
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.setFrozenRows(1);
+  return sheet;
+}
+
+function getOrCreateBetsSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(BETS_SHEET);
+  if (sheet) return sheet;
+
+  sheet = ss.insertSheet(BETS_SHEET);
+  const headers = betsHeaders_();
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.setFrozenRows(1);
   return sheet;
