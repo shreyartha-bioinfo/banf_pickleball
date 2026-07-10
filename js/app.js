@@ -213,37 +213,39 @@
     }
 
     standingsTable.innerHTML = `
-      <table>
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Player</th>
-            <th class="num">Wins</th>
-            <th class="num">Point Diff</th>
-            <th class="num">Ace Diff</th>
-            <th class="num">H2H</th>
-            <th class="num">Played</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows
-            .map((r) => {
-              const qualifies = r.rank <= QUALIFY_RANK;
-              return `
-                <tr class="${qualifies ? "qualify" : ""}">
-                  <td class="rank-cell">${r.rank}${qualifies ? '<span class="qualify-badge">Q</span>' : ""}</td>
-                  <td>${escapeHtml(r.player)}</td>
-                  <td class="num">${r.wins}</td>
-                  <td class="num">${r.pointDiff > 0 ? "+" : ""}${r.pointDiff}</td>
-                  <td class="num">${r.aceDiff > 0 ? "+" : ""}${r.aceDiff}</td>
-                  <td class="num">${r.headScore > 0 ? "+" : ""}${r.headScore}</td>
-                  <td class="num">${r.played}/3</td>
-                </tr>
-              `;
-            })
-            .join("")}
-        </tbody>
-      </table>
+      <div class="standings-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player</th>
+              <th class="num">Wins</th>
+              <th class="num">Point Diff</th>
+              <th class="num">Ace Diff</th>
+              <th class="num">H2H</th>
+              <th class="num">Played</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows
+              .map((r) => {
+                const qualifies = r.rank <= QUALIFY_RANK;
+                return `
+                  <tr class="${qualifies ? "qualify" : ""}">
+                    <td><span class="rank-chip">${r.rank}</span>${qualifies ? '<span class="qualify-badge">Q</span>' : ""}</td>
+                    <td>${escapeHtml(r.player)}</td>
+                    <td class="num">${r.wins}</td>
+                    <td class="num">${r.pointDiff > 0 ? "+" : ""}${r.pointDiff}</td>
+                    <td class="num">${r.aceDiff > 0 ? "+" : ""}${r.aceDiff}</td>
+                    <td class="num">${r.headScore > 0 ? "+" : ""}${r.headScore}</td>
+                    <td class="num">${r.played}/3</td>
+                  </tr>
+                `;
+              })
+              .join("")}
+          </tbody>
+        </table>
+      </div>
       <p class="standings-legend">Q = currently qualifying for the top 8. Ties across all four tiebreakers share a rank (e.g. 1, 2, 2, 2, 2, 6, 6, 8).</p>
     `;
   }
