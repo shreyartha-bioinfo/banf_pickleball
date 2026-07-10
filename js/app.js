@@ -141,7 +141,9 @@
       game.team2.forEach((p) => credit(p, t2s, t1s, team1Present));
     });
 
-    const ranked = players.filter((p) => totals[p].played > 0);
+    // Show every player from the start (0s across the board before any results),
+    // so the table exists and updates incrementally as each game completes.
+    const ranked = players.slice();
 
     function metricKey(p) {
       const t = totals[p];
@@ -180,7 +182,9 @@
       if (b.wins !== a.wins) return b.wins - a.wins;
       if (b.pointDiff !== a.pointDiff) return b.pointDiff - a.pointDiff;
       if (b.aceDiff !== a.aceDiff) return b.aceDiff - a.aceDiff;
-      return b.headScore - a.headScore;
+      if (b.headScore !== a.headScore) return b.headScore - a.headScore;
+      // Same rank either way (tie on all 4 tiebreakers) — alphabetical just gives a stable display order.
+      return a.player.localeCompare(b.player);
     });
 
     rows.forEach((row, i) => {
