@@ -25,6 +25,15 @@ function doGet(e) {
 
 function doPost(e) {
   const payload = JSON.parse(e.postData.contents);
+
+  if (payload.action === "verify") {
+    return jsonResponse_({ valid: checkPassword_(payload.password) });
+  }
+
+  if (!checkPassword_(payload.password)) {
+    return jsonResponse_({ status: "error", message: "Invalid password" });
+  }
+
   const sheet = getSheet_();
   const data = sheet.getDataRange().getValues();
 
@@ -63,6 +72,12 @@ function doPost(e) {
   }
 
   return jsonResponse_({ status: "ok" });
+}
+
+function checkPassword_(password) {
+  const stored = PropertiesService.getScriptProperties().getProperty("ADMIN_PASSWORD");
+  if (!stored) return false; // no password configured yet -> deny all writes by default
+  return String(password) === stored;
 }
 
 function getSheet_() {

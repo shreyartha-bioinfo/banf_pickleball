@@ -21,14 +21,21 @@ scores sync across everyone viewing the site.
 2. In the Sheet, go to **Extensions → Apps Script**.
 3. Delete any placeholder code in `Code.gs` and paste in the contents of
    [`apps-script/Code.gs`](apps-script/Code.gs) from this repo.
-4. Click **Deploy → New deployment**.
+4. Set the scorekeeper password: in the Apps Script editor, click the gear icon
+   (**Project Settings**) in the left sidebar, scroll to **Script Properties**, click
+   **Add script property**, and add:
+   - Property: `ADMIN_PASSWORD`
+   - Value: whatever password you want to use to unlock score entry.
+
+   This keeps the password server-side — it's never included in the public website code.
+5. Click **Deploy → New deployment**.
    - Click the gear icon next to "Select type" and choose **Web app**.
    - Description: anything, e.g. "results API".
    - Execute as: **Me**.
    - Who has access: **Anyone**.
    - Click **Deploy**, and authorize the script when prompted (it only edits this one sheet).
-5. Copy the **Web app URL** it gives you (ends in `/exec`).
-6. In this repo, open [`js/config.js`](js/config.js) and paste the URL:
+6. Copy the **Web app URL** it gives you (ends in `/exec`).
+7. In this repo, open [`js/config.js`](js/config.js) and paste the URL:
 
    ```js
    const CONFIG = {
@@ -36,7 +43,7 @@ scores sync across everyone viewing the site.
    };
    ```
 
-7. Commit and push. The site will now read/write results from your Sheet.
+8. Commit and push. The site will now read/write results from your Sheet.
 
 The script auto-creates a `Results` sheet tab with headers the first time someone saves
 a score — no manual header setup needed. You (or anyone with edit access to the Sheet)
@@ -55,10 +62,23 @@ appears for the record) and save the result as normal. The absent player is excl
 from the standings' win/played counts for that game — the match result and court
 assignment are unaffected.
 
-> **Note:** because the Web App is set to "Anyone" access, anyone who has the URL can
-> submit results (there's no login). That matches a casual sports-day scorekeeping
-> use case; don't reuse this URL for anything sensitive. If you ever want to rotate
-> it, redeploy a new version in Apps Script and update `js/config.js`.
+### Scorekeeper login (password-protected score entry)
+
+Everyone who visits the site can see the schedule, live scores, and standings. Only
+someone who knows the password can enter or edit results:
+
+- Click **🔒 Scorekeeper Login** in the header, enter the password you set as
+  `ADMIN_PASSWORD` above, and click **Unlock**. The site remembers you in that browser
+  (`localStorage`) so you won't need to log in again on that device, until you click
+  **Log Out**.
+- The password is checked **on the server** (in Apps Script) on every save, not just
+  hidden in the page — so someone poking at the site's JavaScript can't find or bypass
+  it. It's still sent over the network in the request body when you log in or save, so
+  treat it as a "keep casual visitors out" gate rather than bank-grade security, and
+  don't reuse a password you use elsewhere.
+- To change the password later, update the `ADMIN_PASSWORD` script property (step 4
+  above) — any browser with the old password saved will be logged out automatically
+  the next time it tries to save.
 
 ## 2. Enable GitHub Pages
 

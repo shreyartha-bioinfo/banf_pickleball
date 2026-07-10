@@ -92,6 +92,53 @@ body {
   cursor: not-allowed;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.admin-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.admin-status {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.admin-status.active {
+  color: var(--accent-yellow);
+  font-weight: 700;
+}
+
+.login-popover {
+  max-width: 1200px;
+  margin: 0.75rem auto 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.login-popover input[type="password"] {
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.95);
+  font-size: 0.9rem;
+  min-width: 200px;
+}
+
+.login-error {
+  font-size: 0.82rem;
+  color: #ffb4b4;
+  font-weight: 600;
+}
+
 .layout {
   max-width: 1200px;
   margin: 0 auto;
@@ -224,6 +271,37 @@ body {
   font-size: 0.72rem;
   color: var(--text-muted);
   margin: 0.5rem 0 0;
+}
+
+.player-line-view {
+  font-size: 0.92rem;
+  margin-bottom: 0.2rem;
+}
+
+.player-line-view.absent .player-name {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.proxy-note {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.score-display {
+  min-width: 3rem;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--court-blue-dark);
+}
+
+.score-display.pending {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--text-muted);
 }
 
 .score-input {

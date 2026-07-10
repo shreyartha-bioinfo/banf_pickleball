@@ -19,9 +19,22 @@
         <p class="subtitle">Men's Pickleball Tournament</p>
       </div>
     </div>
-    <button id="refresh-btn" class="btn btn-ghost" title="Reload latest results">
-      <span id="refresh-icon">⟳</span> Refresh Results
-    </button>
+    <div class="header-actions">
+      <button id="refresh-btn" class="btn btn-ghost" title="Reload latest results">
+        <span id="refresh-icon">⟳</span> Refresh Results
+      </button>
+      <div class="admin-controls">
+        <span id="admin-status" class="admin-status">Viewing (read-only)</span>
+        <button id="admin-login-btn" class="btn btn-ghost">🔒 Scorekeeper Login</button>
+        <button id="admin-logout-btn" class="btn btn-ghost" hidden>Log Out</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="login-popover" class="login-popover" hidden>
+    <input type="password" id="admin-password-input" placeholder="Scorekeeper password" autocomplete="current-password">
+    <button id="admin-submit-btn" class="btn btn-primary">Unlock</button>
+    <span id="login-error" class="login-error"></span>
   </div>
 </header>
 
