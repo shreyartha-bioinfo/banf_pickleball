@@ -635,10 +635,9 @@
     if (!locked) {
       buildFantasyForm();
       const n = fantasyData.entries.length;
-      const names = fantasyData.entries.map((e) => escapeHtml(e.name)).join(", ");
       fantasyLeaderboard.innerHTML = `
-        <p class="hint">The leaderboard appears once picks lock.
-        ${n > 0 ? `<strong>${n}</strong> ${n === 1 ? "entry" : "entries"} so far: ${names}.` : "No entries yet — be the first!"}</p>
+        <p class="hint">The leaderboard appears once picks lock — entrants stay anonymous until then.
+        ${n > 0 ? `<strong>${n}</strong> ${n === 1 ? "entry" : "entries"} so far.` : "No entries yet — be the first!"}</p>
       `;
       return;
     }
@@ -886,10 +885,9 @@
     if (!locked) {
       payoutStageTag.textContent = "After Lock";
       const n = betsData.entries.length;
-      const names = betsData.entries.map((e) => escapeHtml(e.name)).join(", ");
       bettingPayouts.innerHTML = `
-        <p class="hint">The leaderboard appears once betting closes.
-        ${n > 0 ? `<strong>${n}</strong> bettor${n === 1 ? "" : "s"} in so far: ${names}.` : "No bets yet — be the first!"}</p>
+        <p class="hint">The leaderboard appears once betting closes — bettors stay anonymous until then.
+        ${n > 0 ? `<strong>${n}</strong> bettor${n === 1 ? "" : "s"} in so far.` : "No bets yet — be the first!"}</p>
       `;
       return;
     }

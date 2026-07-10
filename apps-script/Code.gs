@@ -77,12 +77,12 @@ function doGet(e) {
   const betsSheet = getOrCreateBetsSheet_();
 
   const locked = Date.now() >= new Date(ENTRY_DEADLINE).getTime();
+  // Before lock, entries are anonymous placeholders (count only) — names, picks
+  // and bets are all revealed together once the deadline passes.
   const entries = sheetToObjects_(fantasySheet).map((row) => {
-    const entry = { name: row.Name, submittedAt: row.SubmittedAt };
-    if (locked) {
-      entry.picks = {};
-      GAMES.forEach((g) => (entry.picks[g.id] = row["G" + g.id]));
-    }
+    if (!locked) return {};
+    const entry = { name: row.Name, submittedAt: row.SubmittedAt, picks: {} };
+    GAMES.forEach((g) => (entry.picks[g.id] = row["G" + g.id]));
     return entry;
   });
 
@@ -93,11 +93,9 @@ function doGet(e) {
   players.forEach((p) => (totals[p] = 0));
   const betEntries = sheetToObjects_(betsSheet).map((row) => {
     players.forEach((p) => (totals[p] += Number(row[p]) || 0));
-    const entry = { name: row.Name, submittedAt: row.SubmittedAt };
-    if (locked) {
-      entry.bets = {};
-      players.forEach((p) => (entry.bets[p] = Number(row[p]) || 0));
-    }
+    if (!locked) return {};
+    const entry = { name: row.Name, submittedAt: row.SubmittedAt, bets: {} };
+    players.forEach((p) => (entry.bets[p] = Number(row[p]) || 0));
     return entry;
   });
 
