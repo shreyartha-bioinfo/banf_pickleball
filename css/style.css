@@ -855,6 +855,15 @@ tr.qualify .rank-chip {
   font-weight: 700;
 }
 
+.bet-hot {
+  margin-left: 0.35rem;
+  font-size: 0.72em;
+  letter-spacing: -0.12em;
+  cursor: default;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
 @media (max-width: 560px) {
   .betting-players { grid-template-columns: 1fr; }
 }

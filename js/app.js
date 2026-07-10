@@ -126,9 +126,37 @@
     return !!s && s.team1Score !== undefined && s.team2Score !== undefined;
   }
 
+  // ---------- Bet "hotness" markers (top 3 distinct bet totals) ----------
+
+  // Returns { playerName: 3|2|1 } — 3 💵 for the most-backed total, 2 for the next
+  // distinct total, 1 for the third. Ties share the same tier.
+  function betHotnessMap() {
+    const totals = betsData.totals || {};
+    const topTotals = Array.from(
+      new Set(ALL_PLAYERS.map((p) => Number(totals[p]) || 0).filter((v) => v > 0))
+    )
+      .sort((a, b) => b - a)
+      .slice(0, 3);
+
+    const map = {};
+    ALL_PLAYERS.forEach((p) => {
+      const v = Number(totals[p]) || 0;
+      const tier = topTotals.indexOf(v);
+      if (tier !== -1) map[p] = 3 - tier;
+    });
+    return map;
+  }
+
+  function betHotIcons(player, hotness) {
+    const n = hotness[player];
+    if (!n) return "";
+    const amount = Number((betsData.totals || {})[player]) || 0;
+    return `<span class="bet-hot" title="Crowd favourite — $${amount} in bets">${"💵".repeat(n)}</span>`;
+  }
+
   // ---------- Game schedule rendering (read-only) ----------
 
-  function playerLinesReadOnly(team, gameId) {
+  function playerLinesReadOnly(team, gameId, hotness) {
     return team
       .map((p) => {
         const absent = isAbsent(gameId, p);
@@ -137,7 +165,7 @@
           (Number(stat.aces) > 0 || Number(stat.faultServes) > 0);
         return `
           <div class="player-line-view${absent ? " absent" : ""}">
-            <span class="player-name">${escapeHtml(p)}</span>
+            <span class="player-name">${escapeHtml(p)}</span>${betHotIcons(p, hotness)}
             ${absent ? `<span class="proxy-note">No-show${stat.proxyName ? ` — proxy: ${escapeHtml(stat.proxyName)}` : ""}</span>` : ""}
             ${hasStatLine ? `<span class="player-stat-note">${Number(stat.aces) || 0} aces · ${Number(stat.faultServes) || 0} false serves</span>` : ""}
           </div>
@@ -147,6 +175,7 @@
   }
 
   function renderGames() {
+    const hotness = betHotnessMap();
     gamesGrid.innerHTML = "";
     GAMES.forEach((game) => {
       const played = hasScore(game.id);
@@ -166,12 +195,12 @@
           </span>
         </div>
         <div class="team-row${winner === teamLabel(game.team1) ? " winner" : ""}">
-          <div class="team-names">${playerLinesReadOnly(game.team1, game.id)}</div>
+          <div class="team-names">${playerLinesReadOnly(game.team1, game.id, hotness)}</div>
           <span class="score-display${played ? "" : " pending"}">${played ? t1 : "–"}</span>
         </div>
         <div class="team-sep"></div>
         <div class="team-row${winner === teamLabel(game.team2) ? " winner" : ""}">
-          <div class="team-names">${playerLinesReadOnly(game.team2, game.id)}</div>
+          <div class="team-names">${playerLinesReadOnly(game.team2, game.id, hotness)}</div>
           <span class="score-display${played ? "" : " pending"}">${played ? t2 : "–"}</span>
         </div>
       `;
@@ -288,6 +317,7 @@
 
   function renderStandings() {
     const rows = computeStandings();
+    const hotness = betHotnessMap();
 
     if (rows.length === 0) {
       standingsTable.innerHTML = `<p class="hint">Standings will appear once results are entered.</p>`;
@@ -317,7 +347,7 @@
                 return `
                   <tr class="${qualifies ? "qualify" : ""}${isCutLine ? " cut-line" : ""}">
                     <td><span class="rank-chip">${r.rank}</span>${qualifies ? '<span class="qualify-badge">Q</span>' : ""}</td>
-                    <td>${escapeHtml(r.player)}</td>
+                    <td>${escapeHtml(r.player)}${betHotIcons(r.player, hotness)}</td>
                     <td class="num">${r.wins}</td>
                     <td class="num">${r.pointDiff > 0 ? "+" : ""}${r.pointDiff}</td>
                     <td class="num">${r.aceDiff > 0 ? "+" : ""}${r.aceDiff}</td>
@@ -330,7 +360,7 @@
           </tbody>
         </table>
       </div>
-      <p class="standings-legend">Q = currently qualifying for the top 8. Ties across all four tiebreakers share a rank (e.g. 1, 2, 2, 2, 2, 6, 6, 8).</p>
+      <p class="standings-legend">Q = currently qualifying for the top 8. Ties across all four tiebreakers share a rank (e.g. 1, 2, 2, 2, 2, 6, 6, 8). 💵 marks the three most-backed players in the betting game (💵💵💵 = biggest total).</p>
     `;
   }
 
