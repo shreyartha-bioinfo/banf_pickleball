@@ -42,6 +42,19 @@ The script auto-creates a `Results` sheet tab with headers the first time someon
 a score — no manual header setup needed. You (or anyone with edit access to the Sheet)
 can also open the Sheet directly to view or correct results.
 
+> If you deployed an earlier version of `Code.gs` before the no-show/proxy feature was
+> added, just redeploy (**Deploy → Manage deployments → edit → New version**) with the
+> latest `apps-script/Code.gs`. It automatically upgrades the header row on the next
+> score save.
+
+### No-shows and proxy players
+
+Each player row in a game card has a checkbox. If a player doesn't show up and someone
+else plays in their place, check that player's box (an optional "proxy name" field
+appears for the record) and save the result as normal. The absent player is excluded
+from the standings' win/played counts for that game — the match result and court
+assignment are unaffected.
+
 > **Note:** because the Web App is set to "Anyone" access, anyone who has the URL can
 > submit results (there's no login). That matches a casual sports-day scorekeeping
 > use case; don't reuse this URL for anything sensitive. If you ever want to rotate

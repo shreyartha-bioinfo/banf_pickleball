@@ -181,13 +181,49 @@ body {
   flex: 1;
 }
 
-.team-names .player {
-  display: block;
-}
-
 .team-row.winner .team-names {
   font-weight: 700;
   color: var(--pickle-green-dark);
+}
+
+.player-line {
+  margin-bottom: 0.3rem;
+}
+
+.player-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.player-check input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--pickle-green);
+}
+
+.player {
+  display: inline-block;
+}
+
+.player.absent {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.proxy-input {
+  margin: 0.25rem 0 0 1.5rem;
+  width: calc(100% - 1.5rem);
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.proxy-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin: 0.5rem 0 0;
 }
 
 .score-input {

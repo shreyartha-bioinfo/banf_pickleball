@@ -4,7 +4,10 @@
  */
 
 const SHEET_NAME = "Results";
-const HEADERS = ["GameId", "Court", "Team1", "Team2", "Score1", "Score2", "Winner", "LastUpdated"];
+const HEADERS = [
+  "GameId", "Court", "Team1", "Team2", "Score1", "Score2", "Winner", "LastUpdated",
+  "AbsentPlayers", "ProxyNames"
+];
 
 function doGet(e) {
   const sheet = getSheet_();
@@ -36,6 +39,9 @@ function doPost(e) {
   const score1 = Number(payload.score1);
   const score2 = Number(payload.score2);
   const winner = score1 === score2 ? "" : score1 > score2 ? payload.team1 : payload.team2;
+  const absentPlayers = Array.isArray(payload.absentPlayers) ? payload.absentPlayers : [];
+  const proxyNames =
+    payload.proxyNames && typeof payload.proxyNames === "object" ? payload.proxyNames : {};
 
   const row = [
     payload.gameId,
@@ -45,7 +51,9 @@ function doPost(e) {
     score1,
     score2,
     winner,
-    new Date()
+    new Date(),
+    JSON.stringify(absentPlayers),
+    JSON.stringify(proxyNames)
   ];
 
   if (rowIndex === -1) {
@@ -63,7 +71,9 @@ function getSheet_() {
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
   }
-  if (sheet.getRange(1, 1).getValue() !== HEADERS[0]) {
+  const currentHeaders = sheet.getRange(1, 1, 1, HEADERS.length).getValues()[0];
+  const headersMatch = HEADERS.every((h, i) => currentHeaders[i] === h);
+  if (!headersMatch) {
     sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
   }
   return sheet;
