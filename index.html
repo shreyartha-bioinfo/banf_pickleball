@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BANF Sports Day 2026 — Men's Pickleball</title>
+<meta name="description" content="BANF Sports Day 2026 Men's Pickleball — live schedule, score entry, rules, tips and tutorials.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥒</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-emoji" aria-hidden="true">🏓</span>
+      <div>
+        <h1>BANF Sports Day 2026</h1>
+        <p class="subtitle">Men's Pickleball Tournament</p>
+      </div>
+    </div>
+    <button id="refresh-btn" class="btn btn-ghost" title="Reload latest results">
+      <span id="refresh-icon">⟳</span> Refresh Results
+    </button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <section class="schedule-panel">
+    <div class="panel-heading">
+      <h2>Match Schedule &amp; Results</h2>
+      <p id="status-line" class="status-line">Loading results…</p>
+    </div>
+
+    <div id="games-grid" class="games-grid" aria-live="polite"></div>
+
+    <div id="standings" class="standings">
+      <h3>Standings</h3>
+      <p class="hint">Wins are tallied automatically as scores are entered.</p>
+      <div id="standings-table"></div>
+    </div>
+  </section>
+
+  <aside class="sidebar">
+
+    <div class="side-card">
+      <h3>📜 Pickleball Rules — Quick Reference</h3>
+      <ul>
+        <li><strong>Serve:</strong> Underhand, diagonally cross-court, paddle contact below waist level.</li>
+        <li><strong>Two-bounce rule:</strong> The ball must bounce once on each side before volleys are allowed (serve, then return).</li>
+        <li><strong>The Kitchen:</strong> The 7 ft non-volley zone at the net — you can't volley the ball while standing in it (or on its line).</li>
+        <li><strong>Scoring:</strong> Games are typically played to 11, win by 2. Only the serving side can score a point.</li>
+        <li><strong>Doubles serving:</strong> Both players on a side get to serve before the side loses the serve — except at the very start of the game (first server only).</li>
+        <li><strong>Faults:</strong> Ball out of bounds, into the net, a volley from the kitchen, or a double bounce ends the rally.</li>
+        <li><strong>Line calls:</strong> A ball touching any part of the line is "in."</li>
+      </ul>
+    </div>
+
+    <div class="side-card">
+      <h3>💡 Tips for Match Day</h3>
+      <ul>
+        <li>Stay out of the kitchen unless you're moving in to hit a bounced ball.</li>
+        <li>Third shot drop: soften your return so the opponents can't smash it back.</li>
+        <li>Communicate with your partner — call "mine," "yours," or "switch" early.</li>
+        <li>Return deep to push opponents back from the net.</li>
+        <li>Warm up your wrist and shoulder — pickleball involves a lot of quick, short strokes.</li>
+        <li>Hydrate between games, especially with back-to-back matches on the same court.</li>
+      </ul>
+    </div>
+
+    <div class="side-card">
+      <h3>🎥 Tutorials &amp; Learning</h3>
+      <ul class="link-list">
+        <li><a href="https://www.youtube.com/results?search_query=pickleball+rules+explained" target="_blank" rel="noopener">Pickleball rules explained (YouTube search)</a></li>
+        <li><a href="https://www.youtube.com/results?search_query=pickleball+beginner+tutorial" target="_blank" rel="noopener">Beginner tutorial basics (YouTube search)</a></li>
+        <li><a href="https://www.youtube.com/results?search_query=pickleball+third+shot+drop" target="_blank" rel="noopener">Third shot drop technique (YouTube search)</a></li>
+        <li><a href="https://www.youtube.com/results?search_query=pickleball+doubles+strategy" target="_blank" rel="noopener">Doubles strategy (YouTube search)</a></li>
+        <li><a href="https://usapickleball.org/" target="_blank" rel="noopener">USA Pickleball — official rulebook &amp; resources</a></li>
+      </ul>
+    </div>
+
+  </aside>
+
+</main>
+
+<footer class="site-footer">
+  <p>BANF Sports Day 2026 · Men's Pickleball · Built for the community 🥒</p>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/schedule.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
