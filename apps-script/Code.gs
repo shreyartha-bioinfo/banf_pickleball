@@ -77,13 +77,26 @@ function doGet(e) {
   const betsSheet = getOrCreateBetsSheet_();
 
   const locked = Date.now() >= new Date(ENTRY_DEADLINE).getTime();
+  const fantasyRows = sheetToObjects_(fantasySheet);
+
   // Before lock, entries are anonymous placeholders (count only) — names, picks
   // and bets are all revealed together once the deadline passes.
-  const entries = sheetToObjects_(fantasySheet).map((row) => {
+  const entries = fantasyRows.map((row) => {
     if (!locked) return {};
     const entry = { name: row.Name, submittedAt: row.SubmittedAt, picks: {} };
     GAMES.forEach((g) => (entry.picks[g.id] = row["G" + g.id]));
     return entry;
+  });
+
+  // Anonymous per-game aggregate of predictor picks (like bet totals): safe to
+  // expose before lock, drives the "crowd pick" badges on the schedule.
+  const pickCounts = {};
+  GAMES.forEach((g) => (pickCounts[g.id] = { 1: 0, 2: 0 }));
+  fantasyRows.forEach((row) => {
+    GAMES.forEach((g) => {
+      const v = Number(row["G" + g.id]);
+      if (v === 1 || v === 2) pickCounts[g.id][v] += 1;
+    });
   });
 
   // Bets: aggregate totals always; individual allocations only after lock
@@ -103,7 +116,7 @@ function doGet(e) {
     scores: sheetToObjects_(scoresSheet),
     playerStats: sheetToObjects_(statsSheet),
     knockouts: sheetToObjects_(getOrCreateKnockoutsSheet_()),
-    fantasy: { locked: locked, deadline: ENTRY_DEADLINE, entries: entries },
+    fantasy: { locked: locked, deadline: ENTRY_DEADLINE, entries: entries, pickCounts: pickCounts },
     bets: { locked: locked, deadline: ENTRY_DEADLINE, budget: BET_BUDGET, entries: betEntries, totals: totals }
   });
 }

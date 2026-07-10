@@ -57,8 +57,8 @@
   let scoresByGame = {};
   // statsByGamePlayer["gameId|Player"] = { aces, faultServes, absent, proxyName }
   let statsByGamePlayer = {};
-  // fantasy (predictor): { locked, deadline, entries: [{ name, submittedAt, picks? }] }
-  let fantasyData = { locked: false, deadline: CONFIG.FANTASY_DEADLINE, entries: [] };
+  // fantasy (predictor): { locked, deadline, entries: [{ name, submittedAt, picks? }], pickCounts: {gameId: {1: n, 2: m}} }
+  let fantasyData = { locked: false, deadline: CONFIG.FANTASY_DEADLINE, entries: [], pickCounts: {} };
   // bets: { locked, deadline, entries: [{ name }], totals: { playerName: dollars } }
   let betsData = { locked: false, deadline: CONFIG.FANTASY_DEADLINE, entries: [], totals: {} };
   // knockoutScores["SF1"|"SF2"|"F"] = { team1Score, team2Score }
@@ -154,6 +154,36 @@
     return `<span class="bet-hot" title="Crowd favourite — $${amount} in bets">${"💵".repeat(n)}</span>`;
   }
 
+  // ---------- Crowd pick badges (majority of predictor picks per game) ----------
+
+  // Returns { slot: 1|2, count, total } when one team holds a strict majority
+  // of predictor picks for this game, else null.
+  function crowdPick(gameId) {
+    let c1 = 0;
+    let c2 = 0;
+    const counts = (fantasyData.pickCounts || {})[gameId];
+    if (counts) {
+      c1 = Number(counts[1]) || 0;
+      c2 = Number(counts[2]) || 0;
+    } else if (fantasyLocked()) {
+      // Older backend without pickCounts: derive from revealed entries post-lock.
+      fantasyData.entries.forEach((e) => {
+        if (!e.picks) return;
+        const v = Number(e.picks[gameId]);
+        if (v === 1) c1 += 1;
+        else if (v === 2) c2 += 1;
+      });
+    }
+    if (c1 === c2) return null;
+    return c1 > c2 ? { slot: 1, count: c1, total: c1 + c2 } : { slot: 2, count: c2, total: c1 + c2 };
+  }
+
+  function crowdPickBadge(gameId, slot) {
+    const pick = crowdPick(gameId);
+    if (!pick || pick.slot !== slot) return "";
+    return `<span class="crowd-chip" title="${pick.count} of ${pick.total} predictors back this team">📣 Crowd pick</span>`;
+  }
+
   // ---------- Game schedule rendering (read-only) ----------
 
   function playerLinesReadOnly(team, gameId, hotness) {
@@ -195,12 +225,12 @@
           </span>
         </div>
         <div class="team-row${winner === teamLabel(game.team1) ? " winner" : ""}">
-          <div class="team-names">${playerLinesReadOnly(game.team1, game.id, hotness)}</div>
+          <div class="team-names">${playerLinesReadOnly(game.team1, game.id, hotness)}${crowdPickBadge(game.id, 1)}</div>
           <span class="score-display${played ? "" : " pending"}">${played ? t1 : "–"}</span>
         </div>
         <div class="team-sep"></div>
         <div class="team-row${winner === teamLabel(game.team2) ? " winner" : ""}">
-          <div class="team-names">${playerLinesReadOnly(game.team2, game.id, hotness)}</div>
+          <div class="team-names">${playerLinesReadOnly(game.team2, game.id, hotness)}${crowdPickBadge(game.id, 2)}</div>
           <span class="score-display${played ? "" : " pending"}">${played ? t2 : "–"}</span>
         </div>
       `;
@@ -1080,7 +1110,8 @@
           fantasyData = {
             locked: data.fantasy.locked === true,
             deadline: data.fantasy.deadline || CONFIG.FANTASY_DEADLINE,
-            entries: data.fantasy.entries || []
+            entries: data.fantasy.entries || [],
+            pickCounts: data.fantasy.pickCounts || {}
           };
         }
 

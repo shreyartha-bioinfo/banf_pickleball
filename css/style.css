@@ -864,6 +864,22 @@ tr.qualify .rank-chip {
   white-space: nowrap;
 }
 
+.crowd-chip {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a6d1a;
+  background: #fdf6e0;
+  border: 1px solid #eeddab;
+  border-radius: 999px;
+  padding: 0.14rem 0.55rem;
+  cursor: default;
+  white-space: nowrap;
+}
+
 @media (max-width: 560px) {
   .betting-players { grid-template-columns: 1fr; }
 }
