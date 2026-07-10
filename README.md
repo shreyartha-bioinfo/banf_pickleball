@@ -116,12 +116,15 @@ Each wager pays out at **wager × the player's final multiplier**:
 - **Knockout bonuses (stack on the base)** — winning a semifinal adds +0.8×; winning
   the championship adds a further +1.5×. (Example: $10 on the table-topper who wins
   semi and final → 1.8 + 0.8 + 1.5 = 4.1× → $41.)
-- **💎 Perfect Portfolio** — spread the full $100 across exactly 8 players; if all 8
-  finish in the top 8, that bettor gets a flat +$50 and +0.5× added to every wager.
+- **💎 Perfect Portfolio** — bet on exactly 8 players and predict the qualifiers
+  perfectly; if all 8 finish in the top 8, that bettor gets a flat +$50 and +0.5×
+  added to every wager (any stake split counts — the full $100 need not be used).
 
-The **Payout Board** appears on the Betting tab once betting locks, showing each
-bettor's staked amount and projected payout, live-updating as standings and knockout
-results come in, and marked "Final" once the championship is decided.
+The **Betting Leaderboard** on the Betting tab lists who has entered before the
+deadline, then switches to the full board once betting locks: bettors ranked by net
+profit (payout minus stake, ties sharing a rank), showing staked amount, payout, and
+a green/red net column, live-updating as standings and knockout results come in and
+marked "Final" once the championship is decided.
 
 ## How standings are ranked
 

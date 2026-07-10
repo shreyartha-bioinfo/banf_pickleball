@@ -793,9 +793,9 @@
         const betPlayers = ALL_PLAYERS.filter((p) => (Number(entry.bets[p]) || 0) > 0);
         const staked = betPlayers.reduce((sum, p) => sum + Number(entry.bets[p]), 0);
 
+        // Perfect Portfolio: bets spread across exactly 8 players, all of whom qualify.
         const isPerfect =
           betPlayers.length === 8 &&
-          staked === BET_BUDGET &&
           betPlayers.every((p) => outcome.seedNames.indexOf(p) !== -1);
 
         let payout = isPerfect ? PERFECT_FLAT_BONUS : 0;
@@ -809,12 +809,18 @@
           payout += Number(entry.bets[p]) * mult;
         });
 
-        return { name: entry.name, staked: staked, payout: payout, perfect: isPerfect };
+        return {
+          name: entry.name,
+          staked: staked,
+          payout: payout,
+          net: payout - staked,
+          perfect: isPerfect
+        };
       });
 
-    rows.sort((a, b) => b.payout - a.payout || String(a.name).localeCompare(String(b.name)));
+    rows.sort((a, b) => b.net - a.net || String(a.name).localeCompare(String(b.name)));
     rows.forEach((row, i) => {
-      row.rank = i > 0 && row.payout === rows[i - 1].payout ? rows[i - 1].rank : i + 1;
+      row.rank = i > 0 && row.net === rows[i - 1].net ? rows[i - 1].rank : i + 1;
     });
     return { rows: rows, champions: outcome.champions };
   }
@@ -826,9 +832,17 @@
 
   function renderPayoutBoard() {
     const locked = fantasyLocked();
-    const hasBets = betsData.entries.some((e) => e.bets);
-    bettingPayoutsCard.hidden = !locked || !hasBets;
-    if (bettingPayoutsCard.hidden) return;
+
+    if (!locked) {
+      payoutStageTag.textContent = "After Lock";
+      const n = betsData.entries.length;
+      const names = betsData.entries.map((e) => escapeHtml(e.name)).join(", ");
+      bettingPayouts.innerHTML = `
+        <p class="hint">The leaderboard appears once betting closes.
+        ${n > 0 ? `<strong>${n}</strong> bettor${n === 1 ? "" : "s"} in so far: ${names}.` : "No bets yet — be the first!"}</p>
+      `;
+      return;
+    }
 
     const board = computePayoutBoard();
     const leagueComplete = GAMES.every((g) => hasScore(g.id));
@@ -849,6 +863,7 @@
               <th>Bettor</th>
               <th class="num">Staked</th>
               <th class="num">${isFinal ? "Payout" : "Projected Payout"}</th>
+              <th class="num">Net</th>
             </tr>
           </thead>
           <tbody>
@@ -860,6 +875,7 @@
                     <td>${escapeHtml(r.name)}${r.perfect ? ' <span class="perfect-badge" title="Perfect Portfolio">💎</span>' : ""}</td>
                     <td class="num">${formatMoney(r.staked)}</td>
                     <td class="num payout-cell">${formatMoney(r.payout)}</td>
+                    <td class="num ${r.net >= 0 ? "net-pos" : "net-neg"}">${r.net >= 0 ? "+" : "−"}${formatMoney(Math.abs(r.net))}</td>
                   </tr>
                 `
               )

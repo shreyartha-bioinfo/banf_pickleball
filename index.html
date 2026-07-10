@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- Bump ?v= on every deploy that changes CSS/JS so browsers fetch fresh copies -->
-<link rel="stylesheet" href="css/style.css?v=10">
+<link rel="stylesheet" href="css/style.css?v=11">
 </head>
 <body>
 
@@ -135,8 +135,8 @@
           you think will finish high and go all the way — all on one favourite, or split
           across several. Payouts follow the multiplier rules below: table rank sets the
           base, knockout wins stack bonuses on top, and a <strong>Perfect Portfolio</strong>
-          (your full $100 across exactly 8 players who all qualify) earns a flat $50 and
-          a +0.5× boost. Bets lock at <strong>10:00 AM (ET), Sunday July 12, 2026</strong>.
+          (betting on exactly the 8 players who qualify) earns a flat $50 and a +0.5×
+          boost. Bets lock at <strong>10:00 AM (ET), Sunday July 12, 2026</strong>.
           Submitting again with the same name replaces your earlier bets. Individual bets
           stay private until betting closes; the word cloud shows only combined totals.
         </p>
@@ -154,13 +154,14 @@
         <p class="locked-note">🔒 Betting is closed. <span id="betting-entry-count"></span> bettors are in — may the best picks win!</p>
       </div>
 
-      <div class="standings" id="betting-payouts-card" hidden>
+      <div class="standings" id="betting-payouts-card">
         <div class="standings-heading">
-          <h3>Payout Board</h3>
+          <h3>Betting Leaderboard</h3>
           <span class="cut-tag" id="payout-stage-tag">Projected</span>
         </div>
-        <p class="hint">Each bettor's return based on the multiplier rules, updating live
-        as standings and knockout results come in. 💎 marks a Perfect Portfolio.</p>
+        <p class="hint">Bettors ranked by net profit (payout minus stake) under the
+        multiplier rules, updating live as standings and knockout results come in.
+        💎 marks a Perfect Portfolio. Ties share a rank.</p>
         <div id="betting-payouts"></div>
       </div>
 
@@ -188,9 +189,11 @@
           </li>
           <li><strong>Knockout bonuses (stack on top):</strong> semifinal win adds
             <b>+0.8×</b>; winning the championship adds <b>+1.5×</b>.</li>
-          <li><strong>💎 Perfect Portfolio:</strong> spread your full $100 across
-            <b>exactly 8 players</b> — if all 8 finish in the top 8, you get a flat
-            <b>+$50</b> bonus and <b>+0.5×</b> added to every one of your wagers.</li>
+          <li><strong>💎 Perfect Portfolio:</strong> bet on <b>exactly 8 players</b> and
+            predict the qualifiers perfectly — if all 8 finish in the top 8, you get a
+            flat <b>+$50</b> bonus and <b>+0.5×</b> added to every one of your wagers.</li>
+          <li><strong>Tied ranks:</strong> players sharing a table rank both get that
+            rank's (higher) multiplier — e.g. two players tied at 2nd both pay 1.7×.</li>
           <li><strong>Example:</strong> $10 on the player who tops the table (1.8×), wins
             their semifinal (+0.8×) and the final (+1.5×) → 4.1× → <b>$41</b>.</li>
         </ul>
@@ -249,8 +252,8 @@
   <p>BANF Sports Day 2026 · Men's Pickleball · Built for the community</p>
 </footer>
 
-<script src="js/config.js?v=10"></script>
-<script src="js/schedule.js?v=10"></script>
-<script src="js/app.js?v=10"></script>
+<script src="js/config.js?v=11"></script>
+<script src="js/schedule.js?v=11"></script>
+<script src="js/app.js?v=11"></script>
 </body>
 </html>
