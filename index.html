@@ -41,6 +41,7 @@
   <section class="schedule-panel">
     <nav class="tab-bar" aria-label="Sections">
       <button class="tab-btn active" id="tab-btn-schedule" type="button">Schedule &amp; Standings</button>
+      <button class="tab-btn" id="tab-btn-knockouts" type="button">Knockouts</button>
       <button class="tab-btn" id="tab-btn-fantasy" type="button">Predictor</button>
       <button class="tab-btn" id="tab-btn-betting" type="button">Betting</button>
     </nav>
@@ -65,6 +66,21 @@
         </p>
         <div id="standings-table"></div>
       </div>
+    </div>
+
+    <div id="tab-knockouts" hidden>
+      <div class="panel-heading">
+        <h2>Knockout Bracket</h2>
+        <p id="knockout-status-line" class="status-line"></p>
+      </div>
+      <p class="hint">
+        The top 8 pair up by rank — 1 with 8, 2 with 7, 3 with 6, 4 with 5. Semifinal 1
+        is (1/8) vs (3/6), Semifinal 2 is (2/7) vs (4/5), and the winners meet in the
+        final. Until all 12 league games are complete this bracket is a live projection
+        from the current standings and can change with every result; players tied on all
+        tiebreakers are seeded in table order until the tie resolves on court.
+      </p>
+      <div id="bracket" class="bracket"></div>
     </div>
 
     <div id="tab-fantasy" hidden>

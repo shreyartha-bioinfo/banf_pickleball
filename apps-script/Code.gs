@@ -10,6 +10,8 @@
  *   - "Scores": one row per game — fill in Team1Score / Team2Score after each match.
  *   - "PlayerStats": one row per player per game — fill in Aces / FaultServes,
  *     and mark Absent (+ optional ProxyName) if a player was a no-show.
+ *   - "Knockouts": semifinal/final scores — fill in Team1Score / Team2Score
+ *     (the Match column says which seeds are Team1 vs Team2).
  *   - "FantasyPicks": predictor entries submitted from the site (auto-managed).
  *   - "Bets": virtual-money bets submitted from the site (auto-managed).
  *
@@ -43,6 +45,14 @@ const FANTASY_SHEET = "FantasyPicks"; // predictor entries (sheet name kept for 
 function fantasyHeaders_() {
   return ["Name", "SubmittedAt"].concat(GAMES.map((g) => "G" + g.id));
 }
+
+const KNOCKOUTS_SHEET = "Knockouts";
+const KNOCKOUTS_HEADERS = ["MatchId", "Match", "Team1Score", "Team2Score"];
+const KNOCKOUT_MATCHES = [
+  ["SF1", "Semifinal 1 — Team1: seeds 1+8, Team2: seeds 3+6"],
+  ["SF2", "Semifinal 2 — Team1: seeds 2+7, Team2: seeds 4+5"],
+  ["F", "Final — Team1: SF1 winner, Team2: SF2 winner"]
+];
 
 const BETS_SHEET = "Bets";
 function playersSorted_() {
@@ -89,6 +99,7 @@ function doGet(e) {
   return jsonResponse_({
     scores: sheetToObjects_(scoresSheet),
     playerStats: sheetToObjects_(statsSheet),
+    knockouts: sheetToObjects_(getOrCreateKnockoutsSheet_()),
     fantasy: { locked: locked, deadline: ENTRY_DEADLINE, entries: entries },
     bets: { locked: locked, deadline: ENTRY_DEADLINE, budget: BET_BUDGET, entries: betEntries, totals: totals }
   });
@@ -186,6 +197,21 @@ function initializeSheets() {
   getOrCreateStatsSheet_();
   getOrCreateFantasySheet_();
   getOrCreateBetsSheet_();
+  getOrCreateKnockoutsSheet_();
+}
+
+function getOrCreateKnockoutsSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(KNOCKOUTS_SHEET);
+  if (sheet) return sheet;
+
+  sheet = ss.insertSheet(KNOCKOUTS_SHEET);
+  sheet.getRange(1, 1, 1, KNOCKOUTS_HEADERS.length).setValues([KNOCKOUTS_HEADERS]);
+  const rows = KNOCKOUT_MATCHES.map((m) => [m[0], m[1], "", ""]);
+  sheet.getRange(2, 1, rows.length, KNOCKOUTS_HEADERS.length).setValues(rows);
+  sheet.setFrozenRows(1);
+  sheet.autoResizeColumns(1, KNOCKOUTS_HEADERS.length);
+  return sheet;
 }
 
 function sheetToObjects_(sheet) {

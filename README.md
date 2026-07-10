@@ -62,6 +62,19 @@ The site polls the Sheet automatically every 45 seconds, plus there's a manual
 > deployments → edit → New version**) with the latest `apps-script/Code.gs` so the
 > site keeps working with the same URL.
 
+## Knockout bracket
+
+The **Knockouts** tab builds the elimination round from the standings automatically:
+
+- The top 8 pair up by rank — 1 with 8, 2 with 7, 3 with 6, 4 with 5.
+- Semifinal 1 is (1/8) vs (3/6); Semifinal 2 is (2/7) vs (4/5); winners meet in the final.
+- Until all 12 league games are complete, the bracket is a live projection from the
+  current standings; players tied on all tiebreakers are seeded in table order.
+- Enter semifinal/final scores in the auto-created `Knockouts` sheet tab (rows `SF1`,
+  `SF2`, `F` — the Match column notes which seeds are Team1 vs Team2). The final's
+  teams fill in automatically from the semifinal winners, and a champions banner
+  appears once the final has a decisive score.
+
 ## Predictor game
 
 The **Predictor** tab lets anyone predict the winner of all 12 league games:

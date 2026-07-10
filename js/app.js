@@ -6,11 +6,16 @@
   const refreshIcon = document.getElementById("refresh-icon");
 
   const tabBtnSchedule = document.getElementById("tab-btn-schedule");
+  const tabBtnKnockouts = document.getElementById("tab-btn-knockouts");
   const tabBtnFantasy = document.getElementById("tab-btn-fantasy");
   const tabBtnBetting = document.getElementById("tab-btn-betting");
   const tabSchedule = document.getElementById("tab-schedule");
+  const tabKnockouts = document.getElementById("tab-knockouts");
   const tabFantasy = document.getElementById("tab-fantasy");
   const tabBetting = document.getElementById("tab-betting");
+
+  const knockoutStatusLine = document.getElementById("knockout-status-line");
+  const bracketEl = document.getElementById("bracket");
 
   const bettingDeadlineLine = document.getElementById("betting-deadline-line");
   const bettingFormCard = document.getElementById("betting-form-card");
@@ -53,6 +58,8 @@
   let fantasyData = { locked: false, deadline: CONFIG.FANTASY_DEADLINE, entries: [] };
   // bets: { locked, deadline, entries: [{ name }], totals: { playerName: dollars } }
   let betsData = { locked: false, deadline: CONFIG.FANTASY_DEADLINE, entries: [], totals: {} };
+  // knockoutScores["SF1"|"SF2"|"F"] = { team1Score, team2Score }
+  let knockoutScores = {};
 
   const ALL_PLAYERS = Array.from(new Set(GAMES.flatMap((g) => g.team1.concat(g.team2)))).sort();
 
@@ -292,6 +299,108 @@
       </div>
       <p class="standings-legend">Q = currently qualifying for the top 8. Ties across all four tiebreakers share a rank (e.g. 1, 2, 2, 2, 2, 6, 6, 8).</p>
     `;
+  }
+
+  // ---------- Knockouts ----------
+
+  function knockoutScore(matchId) {
+    const s = knockoutScores[matchId];
+    return s && s.team1Score !== undefined && s.team2Score !== undefined ? s : null;
+  }
+
+  function knockoutMatchCard(title, matchId, team1, team2) {
+    const s = knockoutScore(matchId);
+    const played = !!s && !!team1.players && !!team2.players;
+    const winner =
+      played && s.team1Score !== s.team2Score ? (s.team1Score > s.team2Score ? 1 : 2) : 0;
+
+    function teamHtml(team, slot) {
+      if (!team.players) {
+        return `
+          <div class="team-row">
+            <div class="team-names"><span class="tbd">${escapeHtml(team.tbdLabel)}</span></div>
+            <span class="score-display pending">–</span>
+          </div>`;
+      }
+      const names = team.players
+        .map(
+          (p) =>
+            `<div class="player-line-view"><span class="seed-chip">${p.seed}</span><span class="player-name">${escapeHtml(p.name)}</span></div>`
+        )
+        .join("");
+      const scoreVal = played ? (slot === 1 ? s.team1Score : s.team2Score) : "–";
+      return `
+        <div class="team-row${winner === slot ? " winner" : ""}">
+          <div class="team-names">${names}</div>
+          <span class="score-display${played ? "" : " pending"}">${scoreVal}</span>
+        </div>`;
+    }
+
+    return `
+      <article class="game-card bracket-match${played ? " completed" : ""}">
+        <div class="game-card-top">
+          <span class="game-number">${title}</span>
+          <span class="status-chip ${played ? "final" : "upcoming"}">${played ? "Final" : "Upcoming"}</span>
+        </div>
+        ${teamHtml(team1, 1)}
+        <div class="team-sep"></div>
+        ${teamHtml(team2, 2)}
+      </article>`;
+  }
+
+  function renderKnockouts() {
+    const rows = computeStandings();
+    const seeds = rows.slice(0, 8).map((r, i) => ({ seed: i + 1, name: r.player }));
+    const playedCount = GAMES.filter((g) => hasScore(g.id)).length;
+    const leagueComplete = playedCount === GAMES.length;
+
+    knockoutStatusLine.textContent = leagueComplete
+      ? "League phase complete — bracket is set"
+      : `Projected bracket · ${playedCount}/${GAMES.length} league games played`;
+
+    if (seeds.length < 8) {
+      bracketEl.innerHTML = `<p class="hint">The bracket appears once standings are available.</p>`;
+      return;
+    }
+
+    const pair = (a, b) => ({ players: [seeds[a - 1], seeds[b - 1]] });
+    const sf1t1 = pair(1, 8);
+    const sf1t2 = pair(3, 6);
+    const sf2t1 = pair(2, 7);
+    const sf2t2 = pair(4, 5);
+
+    function sfWinner(matchId, t1, t2) {
+      const s = knockoutScore(matchId);
+      if (!s || s.team1Score === s.team2Score) return null;
+      return s.team1Score > s.team2Score ? t1 : t2;
+    }
+
+    const finalist1 = sfWinner("SF1", sf1t1, sf1t2) || { players: null, tbdLabel: "Winner of Semifinal 1" };
+    const finalist2 = sfWinner("SF2", sf2t1, sf2t2) || { players: null, tbdLabel: "Winner of Semifinal 2" };
+
+    const finalScore = knockoutScore("F");
+    let championHtml = "";
+    if (finalScore && finalist1.players && finalist2.players && finalScore.team1Score !== finalScore.team2Score) {
+      const champs = finalScore.team1Score > finalScore.team2Score ? finalist1 : finalist2;
+      championHtml = `
+        <div class="champion-card">
+          <span class="champion-trophy">🏆</span>
+          <p class="champion-kicker">Champions</p>
+          <p class="champion-names">${champs.players.map((p) => escapeHtml(p.name)).join(" &amp; ")}</p>
+        </div>`;
+    }
+
+    bracketEl.innerHTML = `
+      <div class="bracket-round">
+        <h4 class="round-title">Semifinals</h4>
+        ${knockoutMatchCard("Semifinal 1", "SF1", sf1t1, sf1t2)}
+        ${knockoutMatchCard("Semifinal 2", "SF2", sf2t1, sf2t2)}
+      </div>
+      <div class="bracket-round bracket-final">
+        <h4 class="round-title">Final</h4>
+        ${knockoutMatchCard("Final", "F", finalist1, finalist2)}
+        ${championHtml}
+      </div>`;
   }
 
   // ---------- Fantasy ----------
@@ -671,6 +780,7 @@
 
   const tabs = [
     { btn: tabBtnSchedule, panel: tabSchedule },
+    { btn: tabBtnKnockouts, panel: tabKnockouts },
     { btn: tabBtnFantasy, panel: tabFantasy },
     { btn: tabBtnBetting, panel: tabBetting }
   ];
@@ -708,6 +818,7 @@
       );
       renderGames();
       renderStandings();
+      renderKnockouts();
       renderFantasy();
       renderBetting();
       return;
@@ -743,6 +854,14 @@
           };
         });
 
+        knockoutScores = {};
+        (data.knockouts || []).forEach((row) => {
+          const t1 = normalizeScoreValue(row.Team1Score);
+          const t2 = normalizeScoreValue(row.Team2Score);
+          if (t1 === undefined || t2 === undefined) return;
+          knockoutScores[row.MatchId] = { team1Score: t1, team2Score: t2 };
+        });
+
         if (data.fantasy) {
           fantasyData = {
             locked: data.fantasy.locked === true,
@@ -764,6 +883,7 @@
         setStatus(`Live · last refreshed ${new Date().toLocaleTimeString()}`);
         renderGames();
         renderStandings();
+        renderKnockouts();
         renderFantasy();
         renderBetting();
       })
@@ -773,6 +893,7 @@
         // and just retry on the next auto-refresh, rather than alarming visitors.
         renderGames();
         renderStandings();
+        renderKnockouts();
         renderFantasy();
         renderBetting();
       })
