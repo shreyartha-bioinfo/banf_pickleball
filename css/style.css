@@ -437,19 +437,19 @@ h1, h2, h3 { font-family: var(--font-display); }
 
 .standings-scroll { overflow-x: auto; }
 
-#standings-table table, #fantasy-leaderboard table {
+#standings-table table, #fantasy-leaderboard table, #betting-payouts table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.89rem;
 }
 
-#standings-table th, #standings-table td, #fantasy-leaderboard th, #fantasy-leaderboard td {
+#standings-table th, #standings-table td, #fantasy-leaderboard th, #fantasy-leaderboard td, #betting-payouts th, #betting-payouts td {
   text-align: left;
   padding: 0.55rem 0.6rem;
   white-space: nowrap;
 }
 
-#standings-table thead th, #fantasy-leaderboard thead th {
+#standings-table thead th, #fantasy-leaderboard thead th, #betting-payouts thead th {
   color: var(--text-muted);
   font-weight: 700;
   font-size: 0.68rem;
@@ -458,16 +458,16 @@ h1, h2, h3 { font-family: var(--font-display); }
   border-bottom: 1px solid var(--line-strong);
 }
 
-#standings-table tbody tr, #fantasy-leaderboard tbody tr {
+#standings-table tbody tr, #fantasy-leaderboard tbody tr, #betting-payouts tbody tr {
   border-bottom: 1px solid var(--line);
   transition: background 0.12s ease;
 }
 
-#standings-table tbody tr:hover, #fantasy-leaderboard tbody tr:hover { background: #f7fafc; }
+#standings-table tbody tr:hover, #fantasy-leaderboard tbody tr:hover, #betting-payouts tbody tr:hover { background: #f7fafc; }
 
-#standings-table tbody td:nth-child(2), #fantasy-leaderboard tbody td:nth-child(2) { font-weight: 600; }
+#standings-table tbody td:nth-child(2), #fantasy-leaderboard tbody td:nth-child(2), #betting-payouts tbody td:nth-child(2) { font-weight: 600; }
 
-#standings-table td.num, #standings-table th.num, #fantasy-leaderboard td.num, #fantasy-leaderboard th.num {
+#standings-table td.num, #standings-table th.num, #fantasy-leaderboard td.num, #fantasy-leaderboard th.num, #betting-payouts td.num, #betting-payouts th.num {
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -807,6 +807,43 @@ tr.qualify .rank-chip {
   color: var(--line-strong);
   font-weight: 600;
 }
+
+.payout-rules {
+  padding-left: 1.05rem;
+  margin: 0.6rem 0 0;
+  font-size: 0.87rem;
+}
+
+.payout-rules li { margin-bottom: 0.65rem; }
+
+.payout-rules li::marker { color: var(--green-bright); }
+
+.mult-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.mult-strip span {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  border: 1px solid var(--line);
+  background: #fbfcfd;
+  border-radius: 999px;
+  padding: 0.18rem 0.6rem;
+  white-space: nowrap;
+}
+
+.mult-strip b { color: var(--green); }
+
+.payout-cell {
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--green);
+}
+
+.perfect-badge { font-size: 0.85em; }
 
 @media (max-width: 560px) {
   .betting-players { grid-template-columns: 1fr; }

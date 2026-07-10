@@ -100,9 +100,28 @@ players they think will win the tournament:
 - Bets land in a `Bets` tab of the Sheet (auto-created, one column per player).
   Resubmitting with the same name before the deadline replaces that person's bets.
 - Betting closes at the same server-enforced deadline as the Predictor.
-- Individual allocations stay private — the API only exposes per-player totals, which
-  feed **The Money Cloud**: a live word cloud where a player's name grows with the
-  total money placed on them (hover a name for its exact total).
+- Individual allocations stay private until the deadline — before lock the API only
+  exposes per-player totals, which feed **The Money Cloud**: a live word cloud where a
+  player's name grows with the total money placed on them (hover a name for its exact
+  total). After lock, individual bets are revealed to drive the payout board.
+
+### Payout rules
+
+Each wager pays out at **wager × the player's final multiplier**:
+
+- **Table stage** — a player finishing 9th–16th doesn't qualify and that wager is lost
+  (0×). The top 8 earn a base multiplier by exact final rank: 1st = 1.8×, 2nd = 1.7×,
+  3rd = 1.6×, 4th = 1.5×, 5th = 1.4×, 6th = 1.3×, 7th = 1.2×, 8th = 1.1×. Players
+  sharing a rank share its multiplier.
+- **Knockout bonuses (stack on the base)** — winning a semifinal adds +0.8×; winning
+  the championship adds a further +1.5×. (Example: $10 on the table-topper who wins
+  semi and final → 1.8 + 0.8 + 1.5 = 4.1× → $41.)
+- **💎 Perfect Portfolio** — spread the full $100 across exactly 8 players; if all 8
+  finish in the top 8, that bettor gets a flat +$50 and +0.5× added to every wager.
+
+The **Payout Board** appears on the Betting tab once betting locks, showing each
+bettor's staked amount and projected payout, live-updating as standings and knockout
+results come in, and marked "Final" once the championship is decided.
 
 ## How standings are ranked
 

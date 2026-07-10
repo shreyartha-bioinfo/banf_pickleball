@@ -86,14 +86,19 @@ function doGet(e) {
     return entry;
   });
 
-  // Bets: expose only per-player aggregate totals plus who has entered —
-  // individual allocations stay private.
+  // Bets: aggregate totals always; individual allocations only after lock
+  // (needed for the payout board — private while betting is open).
   const players = playersSorted_();
   const totals = {};
   players.forEach((p) => (totals[p] = 0));
   const betEntries = sheetToObjects_(betsSheet).map((row) => {
     players.forEach((p) => (totals[p] += Number(row[p]) || 0));
-    return { name: row.Name, submittedAt: row.SubmittedAt };
+    const entry = { name: row.Name, submittedAt: row.SubmittedAt };
+    if (locked) {
+      entry.bets = {};
+      players.forEach((p) => (entry.bets[p] = Number(row[p]) || 0));
+    }
+    return entry;
   });
 
   return jsonResponse_({

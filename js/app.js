@@ -28,6 +28,9 @@
   const bettingMsg = document.getElementById("betting-msg");
   const bettingPotLine = document.getElementById("betting-pot-line");
   const bettingCloud = document.getElementById("betting-cloud");
+  const bettingPayoutsCard = document.getElementById("betting-payouts-card");
+  const bettingPayouts = document.getElementById("betting-payouts");
+  const payoutStageTag = document.getElementById("payout-stage-tag");
 
   const fantasyDeadlineLine = document.getElementById("fantasy-deadline-line");
   const fantasyFormCard = document.getElementById("fantasy-form-card");
@@ -733,6 +736,145 @@
       });
   }
 
+  // ----- Payout engine -----
+
+  const SF_BONUS = 0.8;
+  const FINAL_BONUS = 1.5;
+  const PERFECT_FLAT_BONUS = 50;
+  const PERFECT_MULT_BOOST = 0.5;
+
+  // Rank 1 -> 1.8x ... rank 8 -> 1.1x; 9th-16th -> 0x (wager lost).
+  function tableMultiplier(rank) {
+    if (rank < 1 || rank > 8) return 0;
+    return Math.round((1.9 - 0.1 * rank) * 10) / 10;
+  }
+
+  // Shared outcome view of the tournament for payout purposes.
+  function computeKnockoutOutcome() {
+    const rows = computeStandings();
+    const rankByPlayer = {};
+    rows.forEach((r) => (rankByPlayer[r.player] = r.rank));
+    const seedNames = rows.slice(0, 8).map((r) => r.player);
+
+    const team = (a, b) => [seedNames[a - 1], seedNames[b - 1]];
+    const sf = [
+      { id: "SF1", t1: team(1, 8), t2: team(3, 6) },
+      { id: "SF2", t1: team(2, 7), t2: team(4, 5) }
+    ];
+
+    const sfWinners = [];
+    const finalists = [];
+    sf.forEach((m) => {
+      const s = knockoutScore(m.id);
+      if (s && s.team1Score !== s.team2Score) {
+        const w = s.team1Score > s.team2Score ? m.t1 : m.t2;
+        sfWinners.push(...w);
+        finalists.push(w);
+      } else {
+        finalists.push(null);
+      }
+    });
+
+    let champions = [];
+    const f = knockoutScore("F");
+    if (f && finalists[0] && finalists[1] && f.team1Score !== f.team2Score) {
+      champions = f.team1Score > f.team2Score ? finalists[0] : finalists[1];
+    }
+
+    return { rankByPlayer: rankByPlayer, seedNames: seedNames, sfWinners: sfWinners, champions: champions };
+  }
+
+  function computePayoutBoard() {
+    const outcome = computeKnockoutOutcome();
+
+    const rows = betsData.entries
+      .filter((e) => e.bets)
+      .map((entry) => {
+        const betPlayers = ALL_PLAYERS.filter((p) => (Number(entry.bets[p]) || 0) > 0);
+        const staked = betPlayers.reduce((sum, p) => sum + Number(entry.bets[p]), 0);
+
+        const isPerfect =
+          betPlayers.length === 8 &&
+          staked === BET_BUDGET &&
+          betPlayers.every((p) => outcome.seedNames.indexOf(p) !== -1);
+
+        let payout = isPerfect ? PERFECT_FLAT_BONUS : 0;
+        betPlayers.forEach((p) => {
+          let mult = tableMultiplier(outcome.rankByPlayer[p]);
+          if (mult > 0) {
+            if (outcome.sfWinners.indexOf(p) !== -1) mult += SF_BONUS;
+            if (outcome.champions.indexOf(p) !== -1) mult += FINAL_BONUS;
+            if (isPerfect) mult += PERFECT_MULT_BOOST;
+          }
+          payout += Number(entry.bets[p]) * mult;
+        });
+
+        return { name: entry.name, staked: staked, payout: payout, perfect: isPerfect };
+      });
+
+    rows.sort((a, b) => b.payout - a.payout || String(a.name).localeCompare(String(b.name)));
+    rows.forEach((row, i) => {
+      row.rank = i > 0 && row.payout === rows[i - 1].payout ? rows[i - 1].rank : i + 1;
+    });
+    return { rows: rows, champions: outcome.champions };
+  }
+
+  function formatMoney(v) {
+    const rounded = Math.round(v * 100) / 100;
+    return "$" + (rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(2));
+  }
+
+  function renderPayoutBoard() {
+    const locked = fantasyLocked();
+    const hasBets = betsData.entries.some((e) => e.bets);
+    bettingPayoutsCard.hidden = !locked || !hasBets;
+    if (bettingPayoutsCard.hidden) return;
+
+    const board = computePayoutBoard();
+    const leagueComplete = GAMES.every((g) => hasScore(g.id));
+    const isFinal = leagueComplete && board.champions.length === 2;
+    payoutStageTag.textContent = isFinal ? "Final" : "Projected";
+
+    if (board.rows.length === 0) {
+      bettingPayouts.innerHTML = `<p class="hint">No bets were placed.</p>`;
+      return;
+    }
+
+    bettingPayouts.innerHTML = `
+      <div class="standings-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Bettor</th>
+              <th class="num">Staked</th>
+              <th class="num">${isFinal ? "Payout" : "Projected Payout"}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${board.rows
+              .map(
+                (r) => `
+                  <tr>
+                    <td><span class="rank-chip">${r.rank}</span></td>
+                    <td>${escapeHtml(r.name)}${r.perfect ? ' <span class="perfect-badge" title="Perfect Portfolio">💎</span>' : ""}</td>
+                    <td class="num">${formatMoney(r.staked)}</td>
+                    <td class="num payout-cell">${formatMoney(r.payout)}</td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+      <p class="standings-legend">${
+        isFinal
+          ? "Tournament complete — payouts are final."
+          : "Payouts shift as standings and knockout results change; they settle when the final is decided."
+      }</p>
+    `;
+  }
+
   // Deterministic pseudo-shuffle so the cloud looks organic but stable between refreshes.
   function cloudOrderKey(name) {
     let h = 0;
@@ -781,6 +923,7 @@
       bettingEntryCount.textContent = String(betsData.entries.length);
     }
     renderBetCloud();
+    renderPayoutBoard();
   }
 
   // ---------- Tabs ----------

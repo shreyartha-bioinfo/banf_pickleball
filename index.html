@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- Bump ?v= on every deploy that changes CSS/JS so browsers fetch fresh copies -->
-<link rel="stylesheet" href="css/style.css?v=9">
+<link rel="stylesheet" href="css/style.css?v=10">
 </head>
 <body>
 
@@ -132,10 +132,13 @@
       <div id="betting-form-card" class="fantasy-card">
         <p class="hint">
           You have <strong>$100 of virtual money</strong> to spread across the players
-          you think will win the tournament — all on one favourite, or split across
-          several. Bets lock at <strong>10:00 AM (ET), Sunday July 12, 2026</strong>.
-          Submitting again with the same name replaces your earlier bets. Individual
-          bets stay private; only the combined totals feed the word cloud below.
+          you think will finish high and go all the way — all on one favourite, or split
+          across several. Payouts follow the multiplier rules below: table rank sets the
+          base, knockout wins stack bonuses on top, and a <strong>Perfect Portfolio</strong>
+          (your full $100 across exactly 8 players who all qualify) earns a flat $50 and
+          a +0.5× boost. Bets lock at <strong>10:00 AM (ET), Sunday July 12, 2026</strong>.
+          Submitting again with the same name replaces your earlier bets. Individual bets
+          stay private until betting closes; the word cloud shows only combined totals.
         </p>
         <label class="fantasy-name-label" for="betting-name">Your name</label>
         <input id="betting-name" class="fantasy-name-input" type="text" maxlength="40" placeholder="e.g. Rahul B" autocomplete="name">
@@ -151,6 +154,16 @@
         <p class="locked-note">🔒 Betting is closed. <span id="betting-entry-count"></span> bettors are in — may the best picks win!</p>
       </div>
 
+      <div class="standings" id="betting-payouts-card" hidden>
+        <div class="standings-heading">
+          <h3>Payout Board</h3>
+          <span class="cut-tag" id="payout-stage-tag">Projected</span>
+        </div>
+        <p class="hint">Each bettor's return based on the multiplier rules, updating live
+        as standings and knockout results come in. 💎 marks a Perfect Portfolio.</p>
+        <div id="betting-payouts"></div>
+      </div>
+
       <div class="standings" id="betting-cloud-card">
         <div class="standings-heading">
           <h3>The Money Cloud</h3>
@@ -158,6 +171,29 @@
         </div>
         <p class="hint" id="betting-pot-line">Player names grow as more money is placed on them.</p>
         <div id="betting-cloud" class="bet-cloud"></div>
+      </div>
+
+      <div class="standings" id="betting-rules-card">
+        <div class="standings-heading">
+          <h3>How Payouts Work</h3>
+          <span class="cut-tag">Multipliers</span>
+        </div>
+        <p class="hint">Each wager pays out at: <strong>wager × the player's final multiplier</strong>.</p>
+        <ul class="payout-rules">
+          <li><strong>Table stage:</strong> a player finishing 9th–16th doesn't qualify —
+            that wager is lost (0×). The top 8 secure a base multiplier by exact rank:
+            <span class="mult-strip">
+              <span>1st <b>1.8×</b></span><span>2nd <b>1.7×</b></span><span>3rd <b>1.6×</b></span><span>4th <b>1.5×</b></span><span>5th <b>1.4×</b></span><span>6th <b>1.3×</b></span><span>7th <b>1.2×</b></span><span>8th <b>1.1×</b></span>
+            </span>
+          </li>
+          <li><strong>Knockout bonuses (stack on top):</strong> semifinal win adds
+            <b>+0.8×</b>; winning the championship adds <b>+1.5×</b>.</li>
+          <li><strong>💎 Perfect Portfolio:</strong> spread your full $100 across
+            <b>exactly 8 players</b> — if all 8 finish in the top 8, you get a flat
+            <b>+$50</b> bonus and <b>+0.5×</b> added to every one of your wagers.</li>
+          <li><strong>Example:</strong> $10 on the player who tops the table (1.8×), wins
+            their semifinal (+0.8×) and the final (+1.5×) → 4.1× → <b>$41</b>.</li>
+        </ul>
       </div>
     </div>
   </section>
@@ -213,8 +249,8 @@
   <p>BANF Sports Day 2026 · Men's Pickleball · Built for the community</p>
 </footer>
 
-<script src="js/config.js?v=9"></script>
-<script src="js/schedule.js?v=9"></script>
-<script src="js/app.js?v=9"></script>
+<script src="js/config.js?v=10"></script>
+<script src="js/schedule.js?v=10"></script>
+<script src="js/app.js?v=10"></script>
 </body>
 </html>
