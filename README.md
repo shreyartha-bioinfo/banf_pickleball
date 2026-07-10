@@ -1,8 +1,9 @@
 # BANF Sports Day 2026 — Men's Pickleball
 
-A static website for the tournament: match schedule, live score entry, standings, and a
-sidebar with rules, tips, and tutorial links. Built as plain HTML/CSS/JS so it can be
-hosted for free on GitHub Pages, with a Google Sheet as the results backend.
+A static website for the tournament: match schedule, live scores, auto-ranked
+standings, and a sidebar with rules, tips, and tutorial links. Built as plain
+HTML/CSS/JS so it can be hosted for free on GitHub Pages. The site is **read-only**
+— you enter results directly in a Google Sheet, and the site displays them live.
 
 ## Live site
 
@@ -14,28 +15,19 @@ https://shreyartha-bioinfo.github.io/banf_pickleball/
 
 ## 1. Set up the results backend (Google Sheet)
 
-Score entries are written to a Google Sheet through a small Apps Script "Web App" so
-scores sync across everyone viewing the site.
-
 1. Create a new Google Sheet (sheets.new). Name it whatever you like, e.g. "BANF Pickleball 2026 Results".
 2. In the Sheet, go to **Extensions → Apps Script**.
 3. Delete any placeholder code in `Code.gs` and paste in the contents of
    [`apps-script/Code.gs`](apps-script/Code.gs) from this repo.
-4. Set the scorekeeper password: in the Apps Script editor, click the gear icon
-   (**Project Settings**) in the left sidebar, scroll to **Script Properties**, click
-   **Add script property**, and add:
-   - Property: `ADMIN_PASSWORD`
-   - Value: whatever password you want to use to unlock score entry.
-
-   This keeps the password server-side — it's never included in the public website code.
-5. Click **Deploy → New deployment**.
+4. Click **Deploy → New deployment**.
    - Click the gear icon next to "Select type" and choose **Web app**.
    - Description: anything, e.g. "results API".
    - Execute as: **Me**.
    - Who has access: **Anyone**.
-   - Click **Deploy**, and authorize the script when prompted (it only edits this one sheet).
-6. Copy the **Web app URL** it gives you (ends in `/exec`).
-7. In this repo, open [`js/config.js`](js/config.js) and paste the URL:
+   - Click **Deploy**, and authorize the script when prompted (it only reads/creates
+     tabs in this one sheet — nothing outside it).
+5. Copy the **Web app URL** it gives you (ends in `/exec`).
+6. In this repo, open [`js/config.js`](js/config.js) and paste the URL:
 
    ```js
    const CONFIG = {
@@ -43,44 +35,48 @@ scores sync across everyone viewing the site.
    };
    ```
 
-8. Commit and push. The site will now read/write results from your Sheet.
+7. Commit and push.
+8. Load the site once (or run `initializeSheets` from the Apps Script editor's Run
+   menu) — this auto-creates two pre-filled tabs in your Sheet:
+   - **Scores** — one row per game, with `Team1Score` / `Team2Score` left blank for you to fill in.
+   - **PlayerStats** — one row per player per game (4 rows per game), with `Aces`,
+     `FaultServes`, `Absent`, and `ProxyName` left blank for you to fill in.
 
-The script auto-creates a `Results` sheet tab with headers the first time someone saves
-a score — no manual header setup needed. You (or anyone with edit access to the Sheet)
-can also open the Sheet directly to view or correct results.
+## 2. Entering results after each match
 
-> If you deployed an earlier version of `Code.gs` before the no-show/proxy feature was
-> added, just redeploy (**Deploy → Manage deployments → edit → New version**) with the
-> latest `apps-script/Code.gs`. It automatically upgrades the header row on the next
-> score save.
+Open the Google Sheet directly (not the website) and:
 
-### No-shows and proxy players
+- In the **Scores** tab, find the row for that `GameId` and fill in `Team1Score` and
+  `Team2Score`.
+- In the **PlayerStats** tab, find each of the 4 players' rows for that `GameId` and
+  fill in `Aces` and `FaultServes`.
+- If a player didn't show up and someone played as their proxy: set that player's
+  `Absent` cell to `TRUE` and optionally note the substitute's name in `ProxyName`.
+  That player gets no credit for the game (no win, no point/ace differential) in the
+  standings — but their present teammate and both opponents are scored normally.
 
-Each player row in a game card has a checkbox. If a player doesn't show up and someone
-else plays in their place, check that player's box (an optional "proxy name" field
-appears for the record) and save the result as normal. The absent player is excluded
-from the standings' win/played counts for that game — the match result and court
-assignment are unaffected.
+The site polls the Sheet automatically every 45 seconds, plus there's a manual
+**Refresh Results** button, so standings update live as you type.
 
-### Scorekeeper login (password-protected score entry)
+> If you deployed an earlier version of `Code.gs`, redeploy (**Deploy → Manage
+> deployments → edit → New version**) with the latest `apps-script/Code.gs` so the
+> site keeps working with the same URL.
 
-Everyone who visits the site can see the schedule, live scores, and standings. Only
-someone who knows the password can enter or edit results:
+## How standings are ranked
 
-- Click **🔒 Scorekeeper Login** in the header, enter the password you set as
-  `ADMIN_PASSWORD` above, and click **Unlock**. The site remembers you in that browser
-  (`localStorage`) so you won't need to log in again on that device, until you click
-  **Log Out**.
-- The password is checked **on the server** (in Apps Script) on every save, not just
-  hidden in the page — so someone poking at the site's JavaScript can't find or bypass
-  it. It's still sent over the network in the request body when you log in or save, so
-  treat it as a "keep casual visitors out" gate rather than bank-grade security, and
-  don't reuse a password you use elsewhere.
-- To change the password later, update the `ADMIN_PASSWORD` script property (step 4
-  above) — any browser with the old password saved will be logged out automatically
-  the next time it tries to save.
+Players are ranked by, in order:
 
-## 2. Enable GitHub Pages
+1. **Wins**
+2. **Point differential** — points scored minus points conceded, summed across a
+   player's games
+3. **Aces − False Serves**
+4. **Head-to-head** — net wins/losses against other players they're still tied with
+   after the first three tiers
+
+If two or more players are still tied after all four tiers, they share the same rank
+(e.g. `1, 2, 2, 2, 2, 6, 6, 8`). The top 8 ranks are highlighted as qualifying.
+
+## 3. Enable GitHub Pages
 
 1. Push this repo's contents to the `main` branch (or merge the PR from the working branch into `main`).
 2. In GitHub: **Settings → Pages**.
@@ -92,19 +88,20 @@ someone who knows the password can enter or edit results:
 ## Project structure
 
 ```
-index.html          Main page: schedule + sidebar
+index.html          Main page: schedule + standings + sidebar
 css/style.css        Styling
 js/schedule.js        The 12-game schedule (edit here to change teams/courts)
 js/config.js           Your Google Apps Script Web App URL goes here
-js/app.js               Rendering, score entry, standings logic
-apps-script/Code.gs   Google Apps Script backend (paste into Apps Script editor)
+js/app.js               Rendering + standings ranking logic (read-only, auto-refreshes)
+apps-script/Code.gs   Google Apps Script backend — serves the Sheet as JSON
 ```
 
 ## Editing the schedule
 
-Edit `js/schedule.js` — each game is an object with `id`, `court`, `team1` (array of
-two names), and `team2`. Game IDs must stay unique since they're used as the key when
-saving/loading results.
+Edit **both** `js/schedule.js` (used by the website) and the `GAMES` constant at the
+top of `apps-script/Code.gs` (used to pre-fill the Sheet tabs) — they must stay
+identical. Each game is an object with `id`, `court`, `team1` (array of two names),
+and `team2`. Game IDs must stay unique.
 
 ## Local preview
 
@@ -114,5 +111,5 @@ No build step required — just open `index.html` in a browser, or serve the fol
 python3 -m http.server 8000
 ```
 
-then visit `http://localhost:8000`. Score saving won't work until `SHEET_API_URL` is
-configured (step 1 above); the schedule will still display.
+then visit `http://localhost:8000`. Live data won't load until `SHEET_API_URL` is
+configured (step 1 above); the schedule will still display with pending scores.
