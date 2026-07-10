@@ -1,9 +1,16 @@
-# BANF Sports Day 2026 — Men's Pickleball
+# BANF Sports Day 2026 — Pickleball
 
 A static website for the tournament: match schedule, live scores, auto-ranked
 standings, and a sidebar with rules, tips, and tutorial links. Built as plain
 HTML/CSS/JS so it can be hosted for free on GitHub Pages. The site is **read-only**
 — you enter results directly in a Google Sheet, and the site displays them live.
+
+The site has two top-level categories:
+
+- **Men's Pickleball** — the full 12-game league with standings, knockouts,
+  predictor, and betting (everything documented below).
+- **Other Categories** — three championship finals: Women's Pickleball,
+  K13–17 Pickleball, and K7–K12 Singles Pickleball.
 
 ## Live site
 
@@ -74,6 +81,22 @@ The **Knockouts** tab builds the elimination round from the standings automatica
   `SF2`, `F` — the Match column notes which seeds are Team1 vs Team2). The final's
   teams fill in automatically from the semifinal winners, and a champions banner
   appears once the final has a decisive score.
+
+## Other categories (women's & kids finals)
+
+The **Other Categories** tab (next to Men's Pickleball at the top of the page) shows
+three finals: **Women's Pickleball**, **K13–17 Pickleball**, and **K7–K12 Singles
+Pickleball**:
+
+- The site auto-creates an `OtherCategories` sheet tab with one row per final
+  (`W-F`, `K13-F`, `K7-F`).
+- Fill in `Team1` / `Team2` when the finalists are known — free text, so use a single
+  name for singles and e.g. `Asha / Priya` for doubles. Until then the site shows
+  "To be announced".
+- Fill in `Team1Score` / `Team2Score` after the match; the card flips to Completed
+  and highlights the winner, live like everything else.
+- The match list itself is defined in `OTHER_MATCHES` in both `js/schedule.js` and
+  `apps-script/Code.gs` — like `GAMES`, the two must stay identical.
 
 ## Predictor game
 
@@ -154,7 +177,7 @@ If two or more players are still tied after all four tiers, they share the same 
 ```
 index.html          Main page: schedule + standings + sidebar
 css/style.css        Styling
-js/schedule.js        The 12-game schedule (edit here to change teams/courts)
+js/schedule.js        The 12-game men's schedule + other-category finals (edit here to change teams/courts)
 js/config.js           Your Google Apps Script Web App URL goes here
 js/app.js               Rendering + standings ranking logic (read-only, auto-refreshes)
 apps-script/Code.gs   Google Apps Script backend — serves the Sheet as JSON

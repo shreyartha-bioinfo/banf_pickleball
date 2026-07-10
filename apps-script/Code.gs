@@ -12,6 +12,8 @@
  *     and mark Absent (+ optional ProxyName) if a player was a no-show.
  *   - "Knockouts": semifinal/final scores — fill in Team1Score / Team2Score
  *     (the Match column says which seeds are Team1 vs Team2).
+ *   - "OtherCategories": the women's and kids finals — fill in Team1 / Team2
+ *     (free text: one name for singles, "A / B" for doubles) and the scores.
  *   - "FantasyPicks": predictor entries submitted from the site (auto-managed).
  *   - "Bets": virtual-money bets submitted from the site (auto-managed).
  *
@@ -52,6 +54,15 @@ const KNOCKOUT_MATCHES = [
   ["SF1", "Semifinal 1 — Team1: seeds 1+8, Team2: seeds 3+6"],
   ["SF2", "Semifinal 2 — Team1: seeds 2+7, Team2: seeds 4+5"],
   ["F", "Final — Team1: SF1 winner, Team2: SF2 winner"]
+];
+
+const OTHER_SHEET = "OtherCategories";
+const OTHER_HEADERS = ["MatchId", "Category", "Match", "Team1", "Team2", "Team1Score", "Team2Score"];
+// Must stay in sync with OTHER_MATCHES in js/schedule.js on the site.
+const OTHER_MATCHES = [
+  ["W-F", "Women's Pickleball", "Final"],
+  ["K13-F", "K13-17 Pickleball", "Final"],
+  ["K7-F", "K7-K12 Singles Pickleball", "Final"]
 ];
 
 const BETS_SHEET = "Bets";
@@ -116,6 +127,7 @@ function doGet(e) {
     scores: sheetToObjects_(scoresSheet),
     playerStats: sheetToObjects_(statsSheet),
     knockouts: sheetToObjects_(getOrCreateKnockoutsSheet_()),
+    otherCategories: sheetToObjects_(getOrCreateOtherCategoriesSheet_()),
     fantasy: { locked: locked, deadline: ENTRY_DEADLINE, entries: entries, pickCounts: pickCounts },
     bets: { locked: locked, deadline: ENTRY_DEADLINE, budget: BET_BUDGET, entries: betEntries, totals: totals }
   });
@@ -214,6 +226,21 @@ function initializeSheets() {
   getOrCreateFantasySheet_();
   getOrCreateBetsSheet_();
   getOrCreateKnockoutsSheet_();
+  getOrCreateOtherCategoriesSheet_();
+}
+
+function getOrCreateOtherCategoriesSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(OTHER_SHEET);
+  if (sheet) return sheet;
+
+  sheet = ss.insertSheet(OTHER_SHEET);
+  sheet.getRange(1, 1, 1, OTHER_HEADERS.length).setValues([OTHER_HEADERS]);
+  const rows = OTHER_MATCHES.map((m) => [m[0], m[1], m[2], "", "", "", ""]);
+  sheet.getRange(2, 1, rows.length, OTHER_HEADERS.length).setValues(rows);
+  sheet.setFrozenRows(1);
+  sheet.autoResizeColumns(1, OTHER_HEADERS.length);
+  return sheet;
 }
 
 function getOrCreateKnockoutsSheet_() {

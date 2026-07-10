@@ -14,6 +14,13 @@
   const tabFantasy = document.getElementById("tab-fantasy");
   const tabBetting = document.getElementById("tab-betting");
 
+  const catBtnMens = document.getElementById("cat-btn-mens");
+  const catBtnOther = document.getElementById("cat-btn-other");
+  const categoryMens = document.getElementById("category-mens");
+  const categoryOther = document.getElementById("category-other");
+  const otherStatusLine = document.getElementById("other-status-line");
+  const otherGamesGrid = document.getElementById("other-games-grid");
+
   const knockoutStatusLine = document.getElementById("knockout-status-line");
   const bracketEl = document.getElementById("bracket");
 
@@ -63,6 +70,9 @@
   let betsData = { locked: false, deadline: CONFIG.FANTASY_DEADLINE, entries: [], totals: {} };
   // knockoutScores["SF1"|"SF2"|"F"] = { team1Score, team2Score }
   let knockoutScores = {};
+  // otherMatchRows[matchId] = { team1, team2, team1Score, team2Score } from the
+  // OtherCategories sheet (teams are free-text; blank until the organizer fills them in)
+  let otherMatchRows = {};
 
   const ALL_PLAYERS = Array.from(new Set(GAMES.flatMap((g) => g.team1.concat(g.team2)))).sort();
 
@@ -501,6 +511,57 @@
         ${knockoutMatchCard("Final", "F", finalist1, finalist2)}
         ${championHtml}
       </div>`;
+  }
+
+  // ---------- Other categories (women's / kids finals) ----------
+
+  function renderOtherMatches() {
+    let playedCount = 0;
+    otherGamesGrid.innerHTML = "";
+
+    OTHER_MATCHES.forEach((match) => {
+      const row = otherMatchRows[match.id] || {};
+      const played = row.team1Score !== undefined && row.team2Score !== undefined;
+      if (played) playedCount += 1;
+      const winner =
+        played && row.team1Score !== row.team2Score ? (row.team1Score > row.team2Score ? 1 : 2) : 0;
+
+      // Teams are free text from the sheet — one name for singles, "A / B" for doubles.
+      function sideHtml(names, score, slot) {
+        const label = names
+          ? names
+              .split("/")
+              .map((n) => `<div class="player-line-view"><span class="player-name">${escapeHtml(n.trim())}</span></div>`)
+              .join("")
+          : `<span class="tbd">To be announced</span>`;
+        return `
+          <div class="team-row${winner === slot ? " winner" : ""}">
+            <div class="team-names">${label}</div>
+            <span class="score-display${played ? "" : " pending"}">${played ? score : "–"}</span>
+          </div>`;
+      }
+
+      const card = document.createElement("article");
+      card.className = "game-card" + (played ? " completed" : "");
+      card.innerHTML = `
+        <div class="game-card-top">
+          <span class="game-number">${escapeHtml(match.category)}</span>
+          <span class="badge-group">
+            <span class="status-chip ${played ? "final" : "upcoming"}">${played ? "Completed" : "Upcoming"}</span>
+            <span class="court-badge">${escapeHtml(match.stage)}</span>
+          </span>
+        </div>
+        ${sideHtml(row.team1, row.team1Score, 1)}
+        <div class="team-sep"></div>
+        ${sideHtml(row.team2, row.team2Score, 2)}
+      `;
+      otherGamesGrid.appendChild(card);
+    });
+
+    otherStatusLine.textContent =
+      playedCount === OTHER_MATCHES.length
+        ? "All finals decided"
+        : `${playedCount}/${OTHER_MATCHES.length} finals played`;
   }
 
   // ---------- Fantasy ----------
@@ -1020,7 +1081,21 @@
     renderPayoutBoard();
   }
 
-  // ---------- Tabs ----------
+  // ---------- Categories & tabs ----------
+
+  const categories = [
+    { btn: catBtnMens, panel: categoryMens },
+    { btn: catBtnOther, panel: categoryOther }
+  ];
+
+  categories.forEach((cat) => {
+    cat.btn.addEventListener("click", () => {
+      categories.forEach((c) => {
+        c.panel.hidden = c !== cat;
+        c.btn.classList.toggle("active", c === cat);
+      });
+    });
+  });
 
   const tabs = [
     { btn: tabBtnSchedule, panel: tabSchedule },
@@ -1063,6 +1138,7 @@
       renderGames();
       renderStandings();
       renderKnockouts();
+      renderOtherMatches();
       renderFantasy();
       renderBetting();
       return;
@@ -1106,6 +1182,18 @@
           knockoutScores[row.MatchId] = { team1Score: t1, team2Score: t2 };
         });
 
+        // Missing on older Apps Script deployments — the tab then just shows
+        // every final as "To be announced" until the backend is redeployed.
+        otherMatchRows = {};
+        (data.otherCategories || []).forEach((row) => {
+          otherMatchRows[row.MatchId] = {
+            team1: String(row.Team1 == null ? "" : row.Team1).trim(),
+            team2: String(row.Team2 == null ? "" : row.Team2).trim(),
+            team1Score: normalizeScoreValue(row.Team1Score),
+            team2Score: normalizeScoreValue(row.Team2Score)
+          };
+        });
+
         if (data.fantasy) {
           fantasyData = {
             locked: data.fantasy.locked === true,
@@ -1129,6 +1217,7 @@
         renderGames();
         renderStandings();
         renderKnockouts();
+        renderOtherMatches();
         renderFantasy();
         renderBetting();
       })
@@ -1139,6 +1228,7 @@
         renderGames();
         renderStandings();
         renderKnockouts();
+        renderOtherMatches();
         renderFantasy();
         renderBetting();
       })

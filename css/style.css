@@ -180,6 +180,41 @@ h1, h2, h3 { font-family: var(--font-display); }
   flex-wrap: wrap;
 }
 
+/* ---------- Category switcher ---------- */
+
+.category-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+}
+
+.category-btn {
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-muted);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.55rem 1.4rem;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.category-btn:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.category-btn.active {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: white;
+  box-shadow: var(--shadow-xs);
+}
+
 /* ---------- Tabs ---------- */
 
 .tab-bar {
