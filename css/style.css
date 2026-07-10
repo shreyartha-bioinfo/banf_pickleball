@@ -559,6 +559,11 @@ tr.qualify .rank-chip {
   color: var(--text-muted);
 }
 
+.placeholder-name {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
 .champion-card {
   text-align: center;
   background: linear-gradient(160deg, #fdf8e7, #ffffff 70%);

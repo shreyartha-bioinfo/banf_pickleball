@@ -325,7 +325,7 @@
       const names = team.players
         .map(
           (p) =>
-            `<div class="player-line-view"><span class="seed-chip">${p.seed}</span><span class="player-name">${escapeHtml(p.name)}</span></div>`
+            `<div class="player-line-view"><span class="seed-chip">${p.seed}</span><span class="player-name${p.placeholder ? " placeholder-name" : ""}">${escapeHtml(p.name)}</span></div>`
         )
         .join("");
       const scoreVal = played ? (slot === 1 ? s.team1Score : s.team2Score) : "–";
@@ -349,13 +349,20 @@
   }
 
   function renderKnockouts() {
-    const rows = computeStandings();
-    const seeds = rows.slice(0, 8).map((r, i) => ({ seed: i + 1, name: r.player }));
     const playedCount = GAMES.filter((g) => hasScore(g.id)).length;
     const leagueComplete = playedCount === GAMES.length;
 
+    // Before any results exist, show neutral "Rank N" slots instead of an
+    // alphabetical prefill; real names take over as scores come in.
+    const seeds =
+      playedCount === 0
+        ? Array.from({ length: 8 }, (_, i) => ({ seed: i + 1, name: `Rank ${i + 1}`, placeholder: true }))
+        : computeStandings().slice(0, 8).map((r, i) => ({ seed: i + 1, name: r.player }));
+
     knockoutStatusLine.textContent = leagueComplete
       ? "League phase complete — bracket is set"
+      : playedCount === 0
+      ? "Bracket fills in as league results come in"
       : `Projected bracket · ${playedCount}/${GAMES.length} league games played`;
 
     if (seeds.length < 8) {
