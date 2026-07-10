@@ -62,6 +62,21 @@ The site polls the Sheet automatically every 45 seconds, plus there's a manual
 > deployments → edit → New version**) with the latest `apps-script/Code.gs` so the
 > site keeps working with the same URL.
 
+## Fantasy game
+
+The **Fantasy** tab lets anyone predict the winner of all 12 league games:
+
+- Participants enter their name, tap a team in each game, and submit. Entries are
+  stored in a `FantasyPicks` tab of the same Google Sheet (auto-created).
+- Resubmitting with the same name before the deadline replaces that person's picks.
+- Picks lock at **10:00 AM US Eastern, Sunday July 12, 2026** — enforced server-side
+  in Apps Script, not just hidden in the page. To change the deadline, update
+  `FANTASY_DEADLINE` in **both** `js/config.js` and `apps-script/Code.gs` (they must
+  match), then redeploy the Apps Script.
+- Everyone's picks stay hidden until the deadline passes; after lock, the form is
+  replaced by a leaderboard scoring one point per correctly picked winner (only
+  completed games count, ties share a rank), updating live as results are entered.
+
 ## How standings are ranked
 
 Players are ranked by, in order:

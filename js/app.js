@@ -5,8 +5,26 @@
   const refreshBtn = document.getElementById("refresh-btn");
   const refreshIcon = document.getElementById("refresh-icon");
 
+  const tabBtnSchedule = document.getElementById("tab-btn-schedule");
+  const tabBtnFantasy = document.getElementById("tab-btn-fantasy");
+  const tabSchedule = document.getElementById("tab-schedule");
+  const tabFantasy = document.getElementById("tab-fantasy");
+
+  const fantasyDeadlineLine = document.getElementById("fantasy-deadline-line");
+  const fantasyFormCard = document.getElementById("fantasy-form-card");
+  const fantasyLockedCard = document.getElementById("fantasy-locked-card");
+  const fantasyEntryCount = document.getElementById("fantasy-entry-count");
+  const fantasyNameInput = document.getElementById("fantasy-name");
+  const fantasyGamesEl = document.getElementById("fantasy-games");
+  const fantasyProgress = document.getElementById("fantasy-progress");
+  const fantasySubmitBtn = document.getElementById("fantasy-submit");
+  const fantasyMsg = document.getElementById("fantasy-msg");
+  const fantasyLeaderboard = document.getElementById("fantasy-leaderboard");
+
   const AUTO_REFRESH_MS = 45000;
   const QUALIFY_RANK = 8;
+  const PICKS_STORAGE_KEY = "banfFantasyPicks";
+  const NAME_STORAGE_KEY = "banfFantasyName";
 
   const notConfigured =
     !CONFIG.SHEET_API_URL || CONFIG.SHEET_API_URL.indexOf("PASTE_YOUR") === 0;
@@ -15,6 +33,8 @@
   let scoresByGame = {};
   // statsByGamePlayer["gameId|Player"] = { aces, faultServes, absent, proxyName }
   let statsByGamePlayer = {};
+  // fantasy: { locked, deadline, entries: [{ name, submittedAt, picks? }] }
+  let fantasyData = { locked: false, deadline: CONFIG.FANTASY_DEADLINE, entries: [] };
 
   function escapeHtml(str) {
     return String(str)
@@ -254,6 +274,232 @@
     `;
   }
 
+  // ---------- Fantasy ----------
+
+  function fantasyLocked() {
+    if (fantasyData.locked === true) return true;
+    const deadlineMs = new Date(fantasyData.deadline || CONFIG.FANTASY_DEADLINE).getTime();
+    return !isNaN(deadlineMs) && Date.now() >= deadlineMs;
+  }
+
+  function loadMyPicks() {
+    try {
+      return JSON.parse(localStorage.getItem(PICKS_STORAGE_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  let myPicks = loadMyPicks();
+  let fantasyFormBuilt = false;
+
+  function updateFantasyProgress() {
+    const picked = GAMES.filter((g) => myPicks[g.id] === 1 || myPicks[g.id] === 2).length;
+    fantasyProgress.textContent = `${picked}/${GAMES.length} games picked`;
+  }
+
+  function buildFantasyForm() {
+    if (fantasyFormBuilt) return;
+    fantasyFormBuilt = true;
+
+    fantasyNameInput.value = localStorage.getItem(NAME_STORAGE_KEY) || "";
+
+    fantasyGamesEl.innerHTML = "";
+    GAMES.forEach((game) => {
+      const row = document.createElement("div");
+      row.className = "pick-row";
+      row.innerHTML = `
+        <div class="pick-meta">
+          <span class="game-number">Game ${game.id}</span>
+          <span class="court-badge">Court ${game.court}</span>
+        </div>
+        <div class="pick-options">
+          <button type="button" class="pick-btn" data-slot="1">${escapeHtml(teamLabel(game.team1))}</button>
+          <button type="button" class="pick-btn" data-slot="2">${escapeHtml(teamLabel(game.team2))}</button>
+        </div>
+      `;
+      const buttons = row.querySelectorAll(".pick-btn");
+      buttons.forEach((btn) => {
+        const slot = Number(btn.dataset.slot);
+        if (myPicks[game.id] === slot) btn.classList.add("selected");
+        btn.addEventListener("click", () => {
+          myPicks[game.id] = slot;
+          localStorage.setItem(PICKS_STORAGE_KEY, JSON.stringify(myPicks));
+          buttons.forEach((b) => b.classList.toggle("selected", Number(b.dataset.slot) === slot));
+          updateFantasyProgress();
+        });
+      });
+      fantasyGamesEl.appendChild(row);
+    });
+    updateFantasyProgress();
+  }
+
+  function setFantasyMsg(text, isError) {
+    fantasyMsg.textContent = text;
+    fantasyMsg.classList.toggle("error", !!isError);
+  }
+
+  function submitFantasyPicks() {
+    if (notConfigured) {
+      setFantasyMsg("Backend not configured yet.", true);
+      return;
+    }
+    if (fantasyLocked()) {
+      setFantasyMsg("Picks are locked — the deadline has passed.", true);
+      renderFantasy();
+      return;
+    }
+    const name = fantasyNameInput.value.trim();
+    if (!name) {
+      setFantasyMsg("Enter your name first.", true);
+      fantasyNameInput.focus();
+      return;
+    }
+    const missing = GAMES.filter((g) => myPicks[g.id] !== 1 && myPicks[g.id] !== 2);
+    if (missing.length > 0) {
+      setFantasyMsg(`Pick a winner for every game — ${missing.length} still unpicked.`, true);
+      return;
+    }
+
+    localStorage.setItem(NAME_STORAGE_KEY, name);
+    fantasySubmitBtn.disabled = true;
+    setFantasyMsg("Submitting…");
+
+    fetch(CONFIG.SHEET_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "fantasy", name: name, picks: myPicks })
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        fantasySubmitBtn.disabled = false;
+        if (data.status !== "ok") {
+          setFantasyMsg(data.message || "Couldn't submit picks. Try again.", true);
+          return;
+        }
+        setFantasyMsg(`Picks submitted for ${name} ✓ — you can resubmit to change them until the deadline.`);
+        loadResults();
+      })
+      .catch((err) => {
+        console.error(err);
+        fantasySubmitBtn.disabled = false;
+        setFantasyMsg("Couldn't submit picks. Check your connection and try again.", true);
+      });
+  }
+
+  function formatCountdown(ms) {
+    if (ms <= 0) return "0m";
+    const d = Math.floor(ms / 86400000);
+    const h = Math.floor((ms % 86400000) / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    return (d > 0 ? d + "d " : "") + (d > 0 || h > 0 ? h + "h " : "") + m + "m";
+  }
+
+  function updateFantasyDeadlineLine() {
+    const deadlineMs = new Date(fantasyData.deadline || CONFIG.FANTASY_DEADLINE).getTime();
+    if (fantasyLocked()) {
+      fantasyDeadlineLine.textContent = "Picks are locked";
+      return;
+    }
+    fantasyDeadlineLine.textContent = `Picks lock in ${formatCountdown(deadlineMs - Date.now())}`;
+  }
+
+  function computeFantasyLeaderboard() {
+    // winnerSlot per decisively completed game
+    const winners = {};
+    GAMES.forEach((g) => {
+      if (!hasScore(g.id)) return;
+      const s = scoresByGame[g.id];
+      if (Number(s.team1Score) === Number(s.team2Score)) return;
+      winners[g.id] = Number(s.team1Score) > Number(s.team2Score) ? 1 : 2;
+    });
+    const scoredGameIds = Object.keys(winners);
+
+    const rows = fantasyData.entries.map((entry) => {
+      let correct = 0;
+      scoredGameIds.forEach((gid) => {
+        if (entry.picks && Number(entry.picks[gid]) === winners[gid]) correct += 1;
+      });
+      return { name: entry.name, correct: correct };
+    });
+
+    rows.sort((a, b) => b.correct - a.correct || String(a.name).localeCompare(String(b.name)));
+    rows.forEach((row, i) => {
+      row.rank = i > 0 && row.correct === rows[i - 1].correct ? rows[i - 1].rank : i + 1;
+    });
+
+    return { rows: rows, scoredCount: scoredGameIds.length };
+  }
+
+  function renderFantasy() {
+    updateFantasyDeadlineLine();
+    const locked = fantasyLocked();
+
+    fantasyFormCard.hidden = locked;
+    fantasyLockedCard.hidden = !locked;
+
+    if (!locked) {
+      buildFantasyForm();
+      const n = fantasyData.entries.length;
+      const names = fantasyData.entries.map((e) => escapeHtml(e.name)).join(", ");
+      fantasyLeaderboard.innerHTML = `
+        <p class="hint">The leaderboard appears once picks lock.
+        ${n > 0 ? `<strong>${n}</strong> ${n === 1 ? "entry" : "entries"} so far: ${names}.` : "No entries yet — be the first!"}</p>
+      `;
+      return;
+    }
+
+    fantasyEntryCount.textContent = String(fantasyData.entries.length);
+
+    if (fantasyData.entries.length === 0) {
+      fantasyLeaderboard.innerHTML = `<p class="hint">No fantasy entries were submitted.</p>`;
+      return;
+    }
+
+    const board = computeFantasyLeaderboard();
+    fantasyLeaderboard.innerHTML = `
+      <div class="standings-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Participant</th>
+              <th class="num">Correct Picks</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${board.rows
+              .map(
+                (r) => `
+                  <tr>
+                    <td><span class="rank-chip">${r.rank}</span></td>
+                    <td>${escapeHtml(r.name)}</td>
+                    <td class="num">${r.correct} / ${board.scoredCount}</td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+      <p class="standings-legend">Scores update automatically as each game finishes. ${board.scoredCount} of ${GAMES.length} games scored so far.</p>
+    `;
+  }
+
+  // ---------- Tabs ----------
+
+  function switchTab(which) {
+    const fantasy = which === "fantasy";
+    tabSchedule.hidden = fantasy;
+    tabFantasy.hidden = !fantasy;
+    tabBtnSchedule.classList.toggle("active", !fantasy);
+    tabBtnFantasy.classList.toggle("active", fantasy);
+  }
+
+  tabBtnSchedule.addEventListener("click", () => switchTab("schedule"));
+  tabBtnFantasy.addEventListener("click", () => switchTab("fantasy"));
+  fantasySubmitBtn.addEventListener("click", submitFantasyPicks);
+
   // ---------- Data loading ----------
 
   function setStatus(text, isError) {
@@ -275,6 +521,7 @@
       );
       renderGames();
       renderStandings();
+      renderFantasy();
       return;
     }
 
@@ -308,10 +555,19 @@
           };
         });
 
+        if (data.fantasy) {
+          fantasyData = {
+            locked: data.fantasy.locked === true,
+            deadline: data.fantasy.deadline || CONFIG.FANTASY_DEADLINE,
+            entries: data.fantasy.entries || []
+          };
+        }
+
         hasLoadedOnce = true;
         setStatus(`Live · last refreshed ${new Date().toLocaleTimeString()}`);
         renderGames();
         renderStandings();
+        renderFantasy();
       })
       .catch((err) => {
         console.error(err);
@@ -319,6 +575,7 @@
         // and just retry on the next auto-refresh, rather than alarming visitors.
         renderGames();
         renderStandings();
+        renderFantasy();
       })
       .finally(() => {
         setTimeout(() => {
@@ -333,4 +590,5 @@
   if (!notConfigured) {
     setInterval(loadResults, AUTO_REFRESH_MS);
   }
+  setInterval(updateFantasyDeadlineLine, 30000);
 })();

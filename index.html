@@ -39,24 +39,70 @@
 <main class="layout">
 
   <section class="schedule-panel">
-    <div class="panel-heading">
-      <h2>Match Schedule &amp; Results</h2>
-      <p id="status-line" class="status-line">Loading results…</p>
+    <nav class="tab-bar" aria-label="Sections">
+      <button class="tab-btn active" id="tab-btn-schedule" type="button">Schedule &amp; Standings</button>
+      <button class="tab-btn" id="tab-btn-fantasy" type="button">Fantasy</button>
+    </nav>
+
+    <div id="tab-schedule">
+      <div class="panel-heading">
+        <h2>Match Schedule &amp; Results</h2>
+        <p id="status-line" class="status-line">Loading results…</p>
+      </div>
+
+      <div id="games-grid" class="games-grid" aria-live="polite"></div>
+
+      <div id="standings" class="standings">
+        <div class="standings-heading">
+          <h3>Standings</h3>
+          <span class="cut-tag">Top 8 Qualify</span>
+        </div>
+        <p class="hint">
+          Ranked automatically after every match by: 1) Wins, 2) Point differential
+          (points scored − points conceded across a player's 3 games), 3) Aces − False
+          Serves, 4) Head-to-head. Players tied on all four share the same rank.
+        </p>
+        <div id="standings-table"></div>
+      </div>
     </div>
 
-    <div id="games-grid" class="games-grid" aria-live="polite"></div>
-
-    <div id="standings" class="standings">
-      <div class="standings-heading">
-        <h3>Standings</h3>
-        <span class="cut-tag">Top 8 Qualify</span>
+    <div id="tab-fantasy" hidden>
+      <div class="panel-heading">
+        <h2>Fantasy — Pick the Winners</h2>
+        <p id="fantasy-deadline-line" class="status-line"></p>
       </div>
-      <p class="hint">
-        Ranked automatically after every match by: 1) Wins, 2) Point differential
-        (points scored − points conceded across a player's 3 games), 3) Aces − False
-        Serves, 4) Head-to-head. Players tied on all four share the same rank.
-      </p>
-      <div id="standings-table"></div>
+
+      <div id="fantasy-form-card" class="fantasy-card">
+        <p class="hint">
+          Predict the winner of all 12 league games. Entries lock at
+          <strong>10:00 AM (ET), Sunday July 12, 2026</strong> — after that, picks are
+          frozen and the leaderboard takes over. Submitting again with the same name
+          before the deadline replaces your earlier picks.
+        </p>
+        <label class="fantasy-name-label" for="fantasy-name">Your name</label>
+        <input id="fantasy-name" class="fantasy-name-input" type="text" maxlength="40" placeholder="e.g. Rahul B" autocomplete="name">
+        <div id="fantasy-games" class="fantasy-games"></div>
+        <div class="fantasy-actions">
+          <span id="fantasy-progress" class="fantasy-progress"></span>
+          <button id="fantasy-submit" class="btn btn-primary" type="button">Submit Picks</button>
+        </div>
+        <p id="fantasy-msg" class="fantasy-msg"></p>
+      </div>
+
+      <div id="fantasy-locked-card" class="fantasy-card" hidden>
+        <p class="locked-note">🔒 Picks are locked. Good luck to all
+          <span id="fantasy-entry-count"></span> participants!</p>
+      </div>
+
+      <div class="standings" id="fantasy-leaderboard-card">
+        <div class="standings-heading">
+          <h3>Fantasy Leaderboard</h3>
+          <span class="cut-tag">Most Correct Picks</span>
+        </div>
+        <p class="hint">One point per correctly picked winner; only completed games count.
+        Ties share a rank.</p>
+        <div id="fantasy-leaderboard"></div>
+      </div>
     </div>
   </section>
 

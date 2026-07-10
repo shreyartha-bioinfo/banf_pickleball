@@ -30,8 +30,16 @@ const GAMES = [
   { id: 12, court: "B", team1: ["Swarnendu Sen", "Souvik Ray"], team2: ["Atmadeep Mazumdar", "Bhupal Dhar"] }
 ];
 
+// Fantasy picks lock at this moment (server-enforced). -04:00 = US Eastern in July.
+const FANTASY_DEADLINE = "2026-07-12T10:00:00-04:00";
+
 const SCORES_SHEET = "Scores";
 const SCORES_HEADERS = ["GameId", "Court", "Team1", "Team2", "Team1Score", "Team2Score"];
+
+const FANTASY_SHEET = "FantasyPicks";
+function fantasyHeaders_() {
+  return ["Name", "SubmittedAt"].concat(GAMES.map((g) => "G" + g.id));
+}
 
 const STATS_SHEET = "PlayerStats";
 const STATS_HEADERS = [
@@ -42,15 +50,75 @@ const STATS_HEADERS = [
 function doGet(e) {
   const scoresSheet = getOrCreateScoresSheet_();
   const statsSheet = getOrCreateStatsSheet_();
+  const fantasySheet = getOrCreateFantasySheet_();
+
+  const locked = Date.now() >= new Date(FANTASY_DEADLINE).getTime();
+  const entries = sheetToObjects_(fantasySheet).map((row) => {
+    const entry = { name: row.Name, submittedAt: row.SubmittedAt };
+    if (locked) {
+      entry.picks = {};
+      GAMES.forEach((g) => (entry.picks[g.id] = row["G" + g.id]));
+    }
+    return entry;
+  });
+
   return jsonResponse_({
     scores: sheetToObjects_(scoresSheet),
-    playerStats: sheetToObjects_(statsSheet)
+    playerStats: sheetToObjects_(statsSheet),
+    fantasy: { locked: locked, deadline: FANTASY_DEADLINE, entries: entries }
   });
+}
+
+function doPost(e) {
+  const payload = JSON.parse(e.postData.contents);
+  if (payload.action !== "fantasy") {
+    return jsonResponse_({ status: "error", message: "Unknown action" });
+  }
+  if (Date.now() >= new Date(FANTASY_DEADLINE).getTime()) {
+    return jsonResponse_({ status: "error", message: "Picks are locked — the deadline has passed." });
+  }
+
+  const name = String(payload.name || "").trim();
+  if (!name || name.length > 40) {
+    return jsonResponse_({ status: "error", message: "Enter a name (max 40 characters)." });
+  }
+  const picks = payload.picks || {};
+  for (let i = 0; i < GAMES.length; i++) {
+    const v = Number(picks[GAMES[i].id]);
+    if (v !== 1 && v !== 2) {
+      return jsonResponse_({ status: "error", message: "Pick a winner for every game." });
+    }
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = getOrCreateFantasySheet_();
+    const data = sheet.getDataRange().getValues();
+    let rowIndex = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === name.toLowerCase()) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+    const row = [name, new Date()].concat(GAMES.map((g) => Number(picks[g.id])));
+    if (rowIndex === -1) {
+      sheet.appendRow(row);
+    } else {
+      sheet.getRange(rowIndex, 1, 1, row.length).setValues([row]);
+    }
+  } finally {
+    lock.releaseLock();
+  }
+
+  return jsonResponse_({ status: "ok" });
 }
 
 function initializeSheets() {
   getOrCreateScoresSheet_();
   getOrCreateStatsSheet_();
+  getOrCreateFantasySheet_();
 }
 
 function sheetToObjects_(sheet) {
@@ -99,6 +167,18 @@ function getOrCreateStatsSheet_() {
   sheet.getRange(2, 1, rows.length, STATS_HEADERS.length).setValues(rows);
   sheet.setFrozenRows(1);
   sheet.autoResizeColumns(1, STATS_HEADERS.length);
+  return sheet;
+}
+
+function getOrCreateFantasySheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(FANTASY_SHEET);
+  if (sheet) return sheet;
+
+  sheet = ss.insertSheet(FANTASY_SHEET);
+  const headers = fantasyHeaders_();
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.setFrozenRows(1);
   return sheet;
 }
 
