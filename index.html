@@ -14,18 +14,23 @@
 <body>
 
 <header class="site-header">
-  <div class="header-glow" aria-hidden="true"></div>
   <div class="header-inner">
     <div class="brand">
       <img class="brand-icon" src="assets/pickleball-icon.svg" alt="" aria-hidden="true">
       <div>
-        <h1>BANF Sports Day 2026</h1>
-        <p class="subtitle">Men's Pickleball Tournament</p>
+        <p class="kicker">BANF Sports Day · 2026</p>
+        <h1>Men's Pickleball Tournament</h1>
+        <ul class="event-meta">
+          <li>12 Games</li>
+          <li>2 Courts</li>
+          <li>16 Players</li>
+          <li>Top 8 Qualify</li>
+        </ul>
       </div>
     </div>
     <div class="header-actions">
       <button id="refresh-btn" class="btn btn-ghost" title="Reload latest results">
-        <span id="refresh-icon">⟳</span> Refresh Results
+        <span id="refresh-icon">⟳</span> Refresh
       </button>
     </div>
   </div>
@@ -42,7 +47,10 @@
     <div id="games-grid" class="games-grid" aria-live="polite"></div>
 
     <div id="standings" class="standings">
-      <h3>Standings — Top 8 Qualify</h3>
+      <div class="standings-heading">
+        <h3>Standings</h3>
+        <span class="cut-tag">Top 8 Qualify</span>
+      </div>
       <p class="hint">
         Ranked automatically after every match by: 1) Wins, 2) Point differential
         (points scored − points conceded across a player's 3 games), 3) Aces − False
@@ -55,7 +63,8 @@
   <aside class="sidebar">
 
     <div class="side-card">
-      <h3>📜 Pickleball Rules — Quick Reference</h3>
+      <p class="card-kicker">Quick Reference</p>
+      <h3>Pickleball Rules</h3>
       <ul>
         <li><strong>Serve:</strong> Underhand, diagonally cross-court, paddle contact below waist level.</li>
         <li><strong>Two-bounce rule:</strong> The ball must bounce once on each side before volleys are allowed (serve, then return).</li>
@@ -68,7 +77,8 @@
     </div>
 
     <div class="side-card">
-      <h3>💡 Tips for Match Day</h3>
+      <p class="card-kicker">On Court</p>
+      <h3>Tips for Match Day</h3>
       <ul>
         <li>It's rally scoring, so every point is live — play returns as aggressively as serves, there's no rally to coast through.</li>
         <li>Stay out of the kitchen unless you're moving in to hit a bounced ball.</li>
@@ -81,7 +91,8 @@
     </div>
 
     <div class="side-card">
-      <h3>🎥 Tutorials &amp; Learning</h3>
+      <p class="card-kicker">Watch &amp; Learn</p>
+      <h3>Tutorials &amp; Resources</h3>
       <ul class="link-list">
         <li><a href="https://www.youtube.com/results?search_query=pickleball+rules+explained" target="_blank" rel="noopener">Pickleball rules explained (YouTube search)</a></li>
         <li><a href="https://www.youtube.com/results?search_query=pickleball+beginner+tutorial" target="_blank" rel="noopener">Beginner tutorial basics (YouTube search)</a></li>

@@ -75,19 +75,21 @@
       const t2 = played ? score.team2Score : null;
       const winner = played && t1 !== t2 ? (t1 > t2 ? teamLabel(game.team1) : teamLabel(game.team2)) : "";
 
-      const card = document.createElement("div");
+      const card = document.createElement("article");
       card.className = "game-card" + (played ? " completed" : "");
       card.innerHTML = `
-        ${winner ? `<div class="winner-tag">Winner: ${escapeHtml(winner)}</div>` : ""}
         <div class="game-card-top">
           <span class="game-number">Game ${game.id}</span>
-          <span class="court-badge">Court ${game.court}</span>
+          <span class="badge-group">
+            <span class="status-chip ${played ? "final" : "upcoming"}">${played ? "Final" : "Upcoming"}</span>
+            <span class="court-badge">Court ${game.court}</span>
+          </span>
         </div>
         <div class="team-row${winner === teamLabel(game.team1) ? " winner" : ""}">
           <div class="team-names">${playerLinesReadOnly(game.team1, game.id)}</div>
           <span class="score-display${played ? "" : " pending"}">${played ? t1 : "–"}</span>
         </div>
-        <div class="vs-divider">VS</div>
+        <div class="team-sep"></div>
         <div class="team-row${winner === teamLabel(game.team2) ? " winner" : ""}">
           <div class="team-names">${playerLinesReadOnly(game.team2, game.id)}</div>
           <span class="score-display${played ? "" : " pending"}">${played ? t2 : "–"}</span>
@@ -228,10 +230,12 @@
           </thead>
           <tbody>
             ${rows
-              .map((r) => {
+              .map((r, i) => {
                 const qualifies = r.rank <= QUALIFY_RANK;
+                const isCutLine =
+                  qualifies && (i === rows.length - 1 || rows[i + 1].rank > QUALIFY_RANK);
                 return `
-                  <tr class="${qualifies ? "qualify" : ""}">
+                  <tr class="${qualifies ? "qualify" : ""}${isCutLine ? " cut-line" : ""}">
                     <td><span class="rank-chip">${r.rank}</span>${qualifies ? '<span class="qualify-badge">Q</span>' : ""}</td>
                     <td>${escapeHtml(r.player)}</td>
                     <td class="num">${r.wins}</td>
