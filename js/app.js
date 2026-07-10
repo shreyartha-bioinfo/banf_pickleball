@@ -278,7 +278,10 @@
       setStatus("Loading results…");
     }
 
-    fetch(CONFIG.SHEET_API_URL)
+    const cacheBustUrl =
+      CONFIG.SHEET_API_URL + (CONFIG.SHEET_API_URL.indexOf("?") === -1 ? "?" : "&") + "t=" + Date.now();
+
+    fetch(cacheBustUrl, { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         scoresByGame = {};
