@@ -259,6 +259,8 @@
     return v === "" || v === null || v === undefined ? undefined : Number(v);
   }
 
+  let hasLoadedOnce = false;
+
   function loadResults() {
     if (notConfigured) {
       setStatus(
@@ -272,7 +274,9 @@
 
     refreshIcon.style.transition = "transform 0.6s linear";
     refreshIcon.style.transform = "rotate(360deg)";
-    setStatus("Loading results…");
+    if (!hasLoadedOnce) {
+      setStatus("Loading results…");
+    }
 
     fetch(CONFIG.SHEET_API_URL)
       .then((res) => res.json())
@@ -295,13 +299,15 @@
           };
         });
 
+        hasLoadedOnce = true;
         setStatus(`Live · last refreshed ${new Date().toLocaleTimeString()}`);
         renderGames();
         renderStandings();
       })
       .catch((err) => {
         console.error(err);
-        setStatus("Couldn't load results — showing schedule only.", true);
+        // Stay quiet on failure: leave the last successful status/data as-is (if any)
+        // and just retry on the next auto-refresh, rather than alarming visitors.
         renderGames();
         renderStandings();
       })
