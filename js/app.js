@@ -78,6 +78,36 @@
     return team.join(" / ");
   }
 
+  // POST helper that tells apart "network unreachable" from "server replied with
+  // something that isn't JSON" (usually an outdated Apps Script deployment that
+  // doesn't handle this action and returns an HTML error page instead).
+  function postJson(payload) {
+    return fetch(CONFIG.SHEET_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    })
+      .catch(() => {
+        throw new Error("NETWORK");
+      })
+      .then((res) => res.text())
+      .then((text) => {
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          console.error("Non-JSON response from backend:", text.slice(0, 500));
+          throw new Error("BAD_RESPONSE");
+        }
+      });
+  }
+
+  function submitErrorMessage(err, what) {
+    if (err && err.message === "BAD_RESPONSE") {
+      return `The results backend didn't understand this request — its Apps Script deployment looks outdated (missing ${what} support). The organizer needs to redeploy the latest Code.gs.`;
+    }
+    return `Couldn't reach the results backend. Check your connection and try again.`;
+  }
+
   function statKey(gameId, player) {
     return gameId + "|" + player;
   }
@@ -504,12 +534,7 @@
     fantasySubmitBtn.disabled = true;
     setFantasyMsg("Submitting…");
 
-    fetch(CONFIG.SHEET_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "fantasy", name: name, picks: myPicks })
-    })
-      .then((res) => res.json())
+    postJson({ action: "fantasy", name: name, picks: myPicks })
       .then((data) => {
         fantasySubmitBtn.disabled = false;
         if (data.status !== "ok") {
@@ -522,7 +547,7 @@
       .catch((err) => {
         console.error(err);
         fantasySubmitBtn.disabled = false;
-        setFantasyMsg("Couldn't submit picks. Check your connection and try again.", true);
+        setFantasyMsg(submitErrorMessage(err, "predictor"), true);
       });
   }
 
@@ -714,12 +739,7 @@
     bettingSubmitBtn.disabled = true;
     setBettingMsg("Placing bets…");
 
-    fetch(CONFIG.SHEET_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "bets", name: name, bets: myBets })
-    })
-      .then((res) => res.json())
+    postJson({ action: "bets", name: name, bets: myBets })
       .then((data) => {
         bettingSubmitBtn.disabled = false;
         if (data.status !== "ok") {
@@ -732,7 +752,7 @@
       .catch((err) => {
         console.error(err);
         bettingSubmitBtn.disabled = false;
-        setBettingMsg("Couldn't place bets. Check your connection and try again.", true);
+        setBettingMsg(submitErrorMessage(err, "betting"), true);
       });
   }
 
