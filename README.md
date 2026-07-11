@@ -115,7 +115,9 @@ The **Knockouts** tab builds the elimination round from the standings automatica
 
 ## Predictor game
 
-The **Predictor** tab lets anyone predict the winner of all 16 league games:
+The **Predictor** tab lets anyone predict the winner of all 16 league games plus
+the Women's Doubles showcase match (17 picks total; the women's pick is stored in
+the `GW` column of `FantasyPicks` and scored from the `W` row of the `Showcase` tab):
 
 - Participants enter their name, tap a team in each game, and submit. Entries are
   stored in a `FantasyPicks` tab of the same Google Sheet (auto-created).
@@ -225,9 +227,10 @@ names changed — "Suvankar" is now listed as "Suvankar Paul").
 **Upgrading an existing Sheet after a Code.gs update:** paste the latest `Code.gs`
 into the Apps Script editor, run **`upgradeSheets`** once from the Run menu, then
 redeploy (**Deploy → Manage deployments → edit → New version**). `upgradeSheets`
-creates any missing tabs (e.g. `Showcase`) and upgrades the `Bets` tab in place —
-renaming the old `Suvankar` column to `Suvankar Paul` and appending the two
-women's-pair columns — without touching any data rows.
+creates any missing tabs (e.g. `Showcase`) and upgrades headers in place — renaming
+the old `Suvankar` column to `Suvankar Paul` and appending the two women's-pair
+columns in `Bets`, and the `GW` women's-pick column in `FantasyPicks` — without
+touching any data rows.
 
 ## Local preview
 

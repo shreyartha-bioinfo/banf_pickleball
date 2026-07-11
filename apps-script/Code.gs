@@ -54,8 +54,10 @@ const SCORES_SHEET = "Scores";
 const SCORES_HEADERS = ["GameId", "Court", "Time", "Team1", "Team2", "Team1Score", "Team2Score"];
 
 const FANTASY_SHEET = "FantasyPicks"; // predictor entries (sheet name kept for compatibility)
+// Predictor pick for the Women's Doubles showcase: wire key "W", sheet column "GW".
+const WOMENS_PICK_ID = "W";
 function fantasyHeaders_() {
-  return ["Name", "SubmittedAt"].concat(GAMES.map((g) => "G" + g.id));
+  return ["Name", "SubmittedAt"].concat(GAMES.map((g) => "G" + g.id)).concat(["GW"]);
 }
 
 const KNOCKOUTS_SHEET = "Knockouts";
@@ -109,6 +111,7 @@ function doGet(e) {
     if (!locked) return {};
     const entry = { name: row.Name, submittedAt: row.SubmittedAt, picks: {} };
     GAMES.forEach((g) => (entry.picks[g.id] = row["G" + g.id]));
+    entry.picks[WOMENS_PICK_ID] = row["GW"];
     return entry;
   });
 
@@ -116,11 +119,14 @@ function doGet(e) {
   // expose before lock, drives the "crowd pick" badges on the schedule.
   const pickCounts = {};
   GAMES.forEach((g) => (pickCounts[g.id] = { 1: 0, 2: 0 }));
+  pickCounts[WOMENS_PICK_ID] = { 1: 0, 2: 0 };
   fantasyRows.forEach((row) => {
     GAMES.forEach((g) => {
       const v = Number(row["G" + g.id]);
       if (v === 1 || v === 2) pickCounts[g.id][v] += 1;
     });
+    const wv = Number(row["GW"]);
+    if (wv === 1 || wv === 2) pickCounts[WOMENS_PICK_ID][wv] += 1;
   });
 
   // Bets: aggregate totals always; individual allocations only after lock
@@ -174,11 +180,15 @@ function handlePredictorPost_(payload) {
   for (let i = 0; i < GAMES.length; i++) {
     const v = Number(picks[GAMES[i].id]);
     if (v !== 1 && v !== 2) {
-      return jsonResponse_({ status: "error", message: "Pick a winner for every game." });
+      return jsonResponse_({ status: "error", message: "Pick a winner for every match." });
     }
   }
+  const wv = Number(picks[WOMENS_PICK_ID]);
+  if (wv !== 1 && wv !== 2) {
+    return jsonResponse_({ status: "error", message: "Pick a winner for the women's doubles too." });
+  }
 
-  const row = [name, new Date()].concat(GAMES.map((g) => Number(picks[g.id])));
+  const row = [name, new Date()].concat(GAMES.map((g) => Number(picks[g.id]))).concat([wv]);
   upsertRowByName_(getOrCreateFantasySheet_(), name, row);
   return jsonResponse_({ status: "ok" });
 }
@@ -255,29 +265,38 @@ function initializeSheets() {
 
 /**
  * Run this once from the editor after updating Code.gs on an existing Sheet.
- * Creates any missing tabs (e.g. "Showcase") and upgrades the Bets tab in
- * place: renames the old "Suvankar" column to "Suvankar Paul" and appends
- * the two women's-pair columns if they're not there yet. Never touches data
- * rows or tabs that are already up to date.
+ * Creates any missing tabs (e.g. "Showcase") and upgrades headers in place:
+ *   - Bets: renames the old "Suvankar" column to "Suvankar Paul" and appends
+ *     the two women's-pair columns if they're not there yet.
+ *   - FantasyPicks: appends the "GW" column (women's doubles pick).
+ * Never touches data rows or tabs that are already up to date.
  */
 function upgradeSheets() {
   initializeSheets();
 
-  const sheet = getOrCreateBetsSheet_();
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const betsSheet = getOrCreateBetsSheet_();
+  const betsHeaders = betsSheet.getRange(1, 1, 1, betsSheet.getLastColumn()).getValues()[0];
 
-  const oldIdx = headers.indexOf("Suvankar");
-  if (oldIdx !== -1 && headers.indexOf("Suvankar Paul") === -1) {
-    sheet.getRange(1, oldIdx + 1).setValue("Suvankar Paul");
-    headers[oldIdx] = "Suvankar Paul";
+  const oldIdx = betsHeaders.indexOf("Suvankar");
+  if (oldIdx !== -1 && betsHeaders.indexOf("Suvankar Paul") === -1) {
+    betsSheet.getRange(1, oldIdx + 1).setValue("Suvankar Paul");
+    betsHeaders[oldIdx] = "Suvankar Paul";
   }
 
   WOMENS_TEAMS.forEach(function (t) {
-    if (headers.indexOf(t) === -1) {
-      sheet.getRange(1, headers.length + 1).setValue(t);
-      headers.push(t);
+    if (betsHeaders.indexOf(t) === -1) {
+      betsSheet.getRange(1, betsHeaders.length + 1).setValue(t);
+      betsHeaders.push(t);
     }
   });
+
+  const fantasySheet = getOrCreateFantasySheet_();
+  const fantasyHeaders = fantasySheet
+    .getRange(1, 1, 1, fantasySheet.getLastColumn())
+    .getValues()[0];
+  if (fantasyHeaders.indexOf("GW") === -1) {
+    fantasySheet.getRange(1, fantasyHeaders.length + 1).setValue("GW");
+  }
 }
 
 function getOrCreateShowcaseSheet_() {

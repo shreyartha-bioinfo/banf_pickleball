@@ -46,6 +46,10 @@
 
   const AUTO_REFRESH_MS = 45000;
   const QUALIFY_RANK = 8;
+  // The predictor covers the 16 league games plus the Women's Doubles
+  // showcase, stored under pick key "W" (sheet column "GW").
+  const WOMENS_PICK_ID = "W";
+  const TOTAL_PICKS = GAMES.length + 1;
   const BET_BUDGET = 100;
   const WOMENS_BET_BUDGET = 20;
   // Women's side bet: winning pair pays 1.5x, losing pair 0.5x — so an even
@@ -591,9 +595,38 @@
   let myPicks = loadMyPicks();
   let fantasyFormBuilt = false;
 
+  function pickedSlot(key) {
+    return myPicks[key] === 1 || myPicks[key] === 2;
+  }
+
   function updateFantasyProgress() {
-    const picked = GAMES.filter((g) => myPicks[g.id] === 1 || myPicks[g.id] === 2).length;
-    fantasyProgress.textContent = `${picked}/${GAMES.length} games picked`;
+    const picked =
+      GAMES.filter((g) => pickedSlot(g.id)).length + (pickedSlot(WOMENS_PICK_ID) ? 1 : 0);
+    fantasyProgress.textContent = `${picked}/${TOTAL_PICKS} picks made`;
+  }
+
+  function pickRow(pickKey, metaHtml, option1, option2) {
+    const row = document.createElement("div");
+    row.className = "pick-row";
+    row.innerHTML = `
+      <div class="pick-meta">${metaHtml}</div>
+      <div class="pick-options">
+        <button type="button" class="pick-btn" data-slot="1">${escapeHtml(option1)}</button>
+        <button type="button" class="pick-btn" data-slot="2">${escapeHtml(option2)}</button>
+      </div>
+    `;
+    const buttons = row.querySelectorAll(".pick-btn");
+    buttons.forEach((btn) => {
+      const slot = Number(btn.dataset.slot);
+      if (myPicks[pickKey] === slot) btn.classList.add("selected");
+      btn.addEventListener("click", () => {
+        myPicks[pickKey] = slot;
+        localStorage.setItem(PICKS_STORAGE_KEY, JSON.stringify(myPicks));
+        buttons.forEach((b) => b.classList.toggle("selected", Number(b.dataset.slot) === slot));
+        updateFantasyProgress();
+      });
+    });
+    return row;
   }
 
   function buildFantasyForm() {
@@ -604,32 +637,27 @@
 
     fantasyGamesEl.innerHTML = "";
     GAMES.forEach((game) => {
-      const row = document.createElement("div");
-      row.className = "pick-row";
-      row.innerHTML = `
-        <div class="pick-meta">
-          <span class="game-number">Game ${game.id}</span>
-          <span class="time-badge">${escapeHtml(game.time)}</span>
-          <span class="court-badge">Court ${game.court}</span>
-        </div>
-        <div class="pick-options">
-          <button type="button" class="pick-btn" data-slot="1">${escapeHtml(teamLabel(game.team1))}</button>
-          <button type="button" class="pick-btn" data-slot="2">${escapeHtml(teamLabel(game.team2))}</button>
-        </div>
-      `;
-      const buttons = row.querySelectorAll(".pick-btn");
-      buttons.forEach((btn) => {
-        const slot = Number(btn.dataset.slot);
-        if (myPicks[game.id] === slot) btn.classList.add("selected");
-        btn.addEventListener("click", () => {
-          myPicks[game.id] = slot;
-          localStorage.setItem(PICKS_STORAGE_KEY, JSON.stringify(myPicks));
-          buttons.forEach((b) => b.classList.toggle("selected", Number(b.dataset.slot) === slot));
-          updateFantasyProgress();
-        });
-      });
-      fantasyGamesEl.appendChild(row);
+      fantasyGamesEl.appendChild(
+        pickRow(
+          game.id,
+          `<span class="game-number">Game ${game.id}</span>
+           <span class="time-badge">${escapeHtml(game.time)}</span>
+           <span class="court-badge">Court ${game.court}</span>`,
+          teamLabel(game.team1),
+          teamLabel(game.team2)
+        )
+      );
     });
+    fantasyGamesEl.appendChild(
+      pickRow(
+        WOMENS_PICK_ID,
+        `<span class="game-number">Women's Doubles</span>
+         <span class="time-badge">${escapeHtml(SHOWCASE_BREAK.time)}</span>
+         <span class="court-badge">Showcase</span>`,
+        WOMENS_TEAMS[0],
+        WOMENS_TEAMS[1]
+      )
+    );
     updateFantasyProgress();
   }
 
@@ -654,9 +682,10 @@
       fantasyNameInput.focus();
       return;
     }
-    const missing = GAMES.filter((g) => myPicks[g.id] !== 1 && myPicks[g.id] !== 2);
-    if (missing.length > 0) {
-      setFantasyMsg(`Pick a winner for every game — ${missing.length} still unpicked.`, true);
+    const missing =
+      GAMES.filter((g) => !pickedSlot(g.id)).length + (pickedSlot(WOMENS_PICK_ID) ? 0 : 1);
+    if (missing > 0) {
+      setFantasyMsg(`Pick a winner for every match (women's included) — ${missing} still unpicked.`, true);
       return;
     }
 
@@ -707,6 +736,10 @@
       if (Number(s.team1Score) === Number(s.team2Score)) return;
       winners[g.id] = Number(s.team1Score) > Number(s.team2Score) ? 1 : 2;
     });
+    const wScore = showcaseScore(WOMENS_PICK_ID);
+    if (wScore && Number(wScore.team1Score) !== Number(wScore.team2Score)) {
+      winners[WOMENS_PICK_ID] = Number(wScore.team1Score) > Number(wScore.team2Score) ? 1 : 2;
+    }
     const scoredGameIds = Object.keys(winners);
 
     const rows = fantasyData.entries.map((entry) => {
@@ -775,7 +808,7 @@
           </tbody>
         </table>
       </div>
-      <p class="standings-legend">Scores update automatically as each game finishes. ${board.scoredCount} of ${GAMES.length} games scored so far.</p>
+      <p class="standings-legend">Scores update automatically as each match finishes. ${board.scoredCount} of ${TOTAL_PICKS} matches scored so far.</p>
     `;
   }
 
