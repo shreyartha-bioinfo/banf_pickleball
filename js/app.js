@@ -69,6 +69,8 @@
   let betsData = { locked: false, deadline: CONFIG.FANTASY_DEADLINE, entries: [], totals: {} };
   // knockoutScores["SF1"|"SF2"|"F"] = { team1Score, team2Score }
   let knockoutScores = {};
+  // showcaseByMatch["W"|"K1"|"K2"] = Showcase sheet row (Team1, Team2, Team1Score, Team2Score)
+  let showcaseByMatch = {};
 
   const ALL_PLAYERS = Array.from(new Set(GAMES.flatMap((g) => g.team1.concat(g.team2)))).sort();
 
@@ -210,29 +212,52 @@
       .join("");
   }
 
+  // Score of a showcase match from the Showcase sheet row, or null if not yet
+  // entered. Falls back to the Knockouts row of the same MatchId, in case the
+  // score was typed there instead.
+  function showcaseScore(matchId) {
+    const row = showcaseByMatch[matchId] || {};
+    const s1 = normalizeScoreValue(row.Team1Score);
+    const s2 = normalizeScoreValue(row.Team2Score);
+    if (s1 !== undefined && s2 !== undefined) return { team1Score: s1, team2Score: s2 };
+    return knockoutScore(matchId);
+  }
+
   function showcaseBreakCard() {
     const card = document.createElement("article");
     card.className = "game-card interlude-card";
+    let playedCount = 0;
     const rows = SHOWCASE_BREAK.matches
       .map((m) => {
-        const s = m.resultId ? knockoutScore(m.resultId) : null;
-        const mid = s
-          ? `<span class="interlude-vs">${s.team1Score}–${s.team2Score}</span>`
-          : `<span class="interlude-vs">vs</span>`;
-        const teams = m.tbd
-          ? `<span class="tbd">${escapeHtml(m.tbd)}</span>`
-          : `${escapeHtml(m.team1.join(" / "))} ${mid} ${escapeHtml(m.team2.join(" / "))}`;
+        const row = showcaseByMatch[m.resultId] || {};
+        // Names entered in the Showcase sheet override the schedule defaults.
+        const t1 = String(row.Team1 || "").trim() || (m.team1 ? m.team1.join(" / ") : "");
+        const t2 = String(row.Team2 || "").trim() || (m.team2 ? m.team2.join(" / ") : "");
+        const s = showcaseScore(m.resultId);
+        if (s) playedCount += 1;
+
+        let teams;
+        if (!t1 || !t2) {
+          teams = `<span class="tbd">${escapeHtml(m.tbd || "Teams to be decided")}</span>`;
+        } else {
+          const w1 = s && s.team1Score > s.team2Score;
+          const w2 = s && s.team2Score > s.team1Score;
+          teams = `<span class="interlude-team${w1 ? " winner" : ""}">${escapeHtml(t1)}</span>
+            <span class="interlude-vs${s ? " score" : ""}">${s ? `${s.team1Score}–${s.team2Score}` : "vs"}</span>
+            <span class="interlude-team${w2 ? " winner" : ""}">${escapeHtml(t2)}</span>`;
+        }
         return `
           <div class="interlude-row">
-            <span class="interlude-label">${escapeHtml(m.label)}</span>
+            <span class="interlude-label">${escapeHtml(m.label)}${s ? '<span class="status-chip final">Final</span>' : ""}</span>
             <span class="interlude-teams">${teams}</span>
           </div>
         `;
       })
       .join("");
+    if (playedCount === SHOWCASE_BREAK.matches.length) card.classList.add("completed");
     card.innerHTML = `
       <div class="game-card-top">
-        <span class="game-number">Showcase Break</span>
+        <span class="game-number">Showcase Matches</span>
         <span class="badge-group">
           <span class="time-badge">${escapeHtml(SHOWCASE_BREAK.time)}</span>
         </span>
@@ -932,7 +957,7 @@
     const outcome = computeKnockoutOutcome();
 
     // Women's Doubles side bet: winner slot 1|2 once the "W" score is in, else 0.
-    const wScore = knockoutScore("W");
+    const wScore = showcaseScore("W");
     const womensWinnerSlot =
       wScore && wScore.team1Score !== wScore.team2Score
         ? (wScore.team1Score > wScore.team2Score ? 1 : 2)
@@ -1188,6 +1213,11 @@
           const t2 = normalizeScoreValue(row.Team2Score);
           if (t1 === undefined || t2 === undefined) return;
           knockoutScores[row.MatchId] = { team1Score: t1, team2Score: t2 };
+        });
+
+        showcaseByMatch = {};
+        (data.showcase || []).forEach((row) => {
+          showcaseByMatch[row.MatchId] = row;
         });
 
         if (data.fantasy) {

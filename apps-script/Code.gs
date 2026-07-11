@@ -10,9 +10,10 @@
  *   - "Scores": one row per game — fill in Team1Score / Team2Score after each match.
  *   - "PlayerStats": one row per player per game — fill in Aces / FaultServes,
  *     and mark Absent (+ optional ProxyName) if a player was a no-show.
- *   - "Knockouts": semifinal/final scores plus the Women's Doubles showcase
- *     (row "W") — fill in Team1Score / Team2Score (the Match column says
- *     which seeds/pairs are Team1 vs Team2).
+ *   - "Knockouts": semifinal/final scores — fill in Team1Score / Team2Score
+ *     (the Match column says which seeds are Team1 vs Team2).
+ *   - "Showcase": the 10:50 AM women's & kids exhibition matches — edit the
+ *     Team1/Team2 names (kids combos) and fill in scores to mark them Final.
  *   - "FantasyPicks": predictor entries submitted from the site (auto-managed).
  *   - "Bets": virtual-money bets submitted from the site (auto-managed).
  *
@@ -62,8 +63,19 @@ const KNOCKOUTS_HEADERS = ["MatchId", "Match", "Team1Score", "Team2Score"];
 const KNOCKOUT_MATCHES = [
   ["SF1", "Semifinal 1 — Team1: seeds 1+8, Team2: seeds 3+6"],
   ["SF2", "Semifinal 2 — Team1: seeds 2+7, Team2: seeds 4+5"],
-  ["F", "Final — Team1: SF1 winner, Team2: SF2 winner"],
-  ["W", "Women's Doubles showcase — Team1: Lopita/Tanima, Team2: Sreya/Roopkatha"]
+  ["F", "Final — Team1: SF1 winner, Team2: SF2 winner"]
+];
+
+// Showcase matches (10:50 AM break): edit Team1/Team2 to set/change the
+// line-ups — e.g. fill in the kids 13–17 combos once decided — and enter
+// Team1Score/Team2Score after each match to mark it Final on the site.
+// Row "W" also settles the women's side bets (Team1 = Lopita / Tanima).
+const SHOWCASE_SHEET = "Showcase";
+const SHOWCASE_HEADERS = ["MatchId", "Label", "Team1", "Team2", "Team1Score", "Team2Score"];
+const SHOWCASE_MATCHES = [
+  ["W", "Women's Doubles", "Lopita / Tanima", "Sreya / Roopkatha"],
+  ["K1", "Kids 13–17 Doubles", "", ""],
+  ["K2", "Kids 7–13 Singles", "Oleen", "Evaan"]
 ];
 
 const BETS_SHEET = "Bets";
@@ -129,6 +141,7 @@ function doGet(e) {
     scores: sheetToObjects_(scoresSheet),
     playerStats: sheetToObjects_(statsSheet),
     knockouts: sheetToObjects_(getOrCreateKnockoutsSheet_()),
+    showcase: sheetToObjects_(getOrCreateShowcaseSheet_()),
     fantasy: { locked: locked, deadline: ENTRY_DEADLINE, entries: entries, pickCounts: pickCounts },
     bets: { locked: locked, deadline: ENTRY_DEADLINE, budget: BET_BUDGET, entries: betEntries, totals: totals }
   });
@@ -237,6 +250,48 @@ function initializeSheets() {
   getOrCreateFantasySheet_();
   getOrCreateBetsSheet_();
   getOrCreateKnockoutsSheet_();
+  getOrCreateShowcaseSheet_();
+}
+
+/**
+ * Run this once from the editor after updating Code.gs on an existing Sheet.
+ * Creates any missing tabs (e.g. "Showcase") and upgrades the Bets tab in
+ * place: renames the old "Suvankar" column to "Suvankar Paul" and appends
+ * the two women's-pair columns if they're not there yet. Never touches data
+ * rows or tabs that are already up to date.
+ */
+function upgradeSheets() {
+  initializeSheets();
+
+  const sheet = getOrCreateBetsSheet_();
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+  const oldIdx = headers.indexOf("Suvankar");
+  if (oldIdx !== -1 && headers.indexOf("Suvankar Paul") === -1) {
+    sheet.getRange(1, oldIdx + 1).setValue("Suvankar Paul");
+    headers[oldIdx] = "Suvankar Paul";
+  }
+
+  WOMENS_TEAMS.forEach(function (t) {
+    if (headers.indexOf(t) === -1) {
+      sheet.getRange(1, headers.length + 1).setValue(t);
+      headers.push(t);
+    }
+  });
+}
+
+function getOrCreateShowcaseSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHOWCASE_SHEET);
+  if (sheet) return sheet;
+
+  sheet = ss.insertSheet(SHOWCASE_SHEET);
+  sheet.getRange(1, 1, 1, SHOWCASE_HEADERS.length).setValues([SHOWCASE_HEADERS]);
+  const rows = SHOWCASE_MATCHES.map((m) => [m[0], m[1], m[2], m[3], "", ""]);
+  sheet.getRange(2, 1, rows.length, SHOWCASE_HEADERS.length).setValues(rows);
+  sheet.setFrozenRows(1);
+  sheet.autoResizeColumns(1, SHOWCASE_HEADERS.length);
+  return sheet;
 }
 
 function getOrCreateKnockoutsSheet_() {

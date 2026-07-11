@@ -24,9 +24,21 @@ The 16 men's league games run in pairs (Court A + Court B) every 20 minutes:
 The **10:50 AM showcase break** (20 minutes, after Game 8) hosts the exhibition
 matches, all at the same time: Women's Doubles — Lopita/Tanima vs Sreya/Roopkatha;
 Kids 13–17 Doubles — team combinations to be decided; Kids 7–13 Singles — Oleen vs
-Evaan. These are display-only on the site and don't feed the men's standings,
-predictor, or betting. Times live in `js/schedule.js` (`time` per game, plus the
-`SHOWCASE_BREAK` constant).
+Evaan. They don't feed the men's standings or predictor; the women's match settles
+the betting side pot (see below). Times live in `js/schedule.js` (`time` per game,
+plus the `SHOWCASE_BREAK` constant).
+
+### Showcase matches — names & scores
+
+The showcase matches are managed from the **Showcase** tab of the Google Sheet
+(auto-created with rows `W` = Women's Doubles, `K1` = Kids 13–17, `K2` = Kids 7–13):
+
+- **Names:** whatever you type in `Team1` / `Team2` overrides the site's defaults —
+  fill in the kids 13–17 combinations there once they're decided. Until both name
+  cells of a row have something, the site shows "Team combinations to be decided".
+- **Scores:** fill in `Team1Score` / `Team2Score` after each match — the showcase
+  card on the site marks that match **Final**, shows the score, and highlights the
+  winner. The `W` row's score also settles the women's betting side pot.
 
 ## Live site
 
@@ -60,10 +72,13 @@ https://shreyartha-bioinfo.github.io/banf_pickleball/
 
 7. Commit and push.
 8. Load the site once (or run `initializeSheets` from the Apps Script editor's Run
-   menu) — this auto-creates two pre-filled tabs in your Sheet:
+   menu) — this auto-creates the pre-filled tabs in your Sheet:
    - **Scores** — one row per game, with `Team1Score` / `Team2Score` left blank for you to fill in.
    - **PlayerStats** — one row per player per game (4 rows per game), with `Aces`,
      `FaultServes`, `Absent`, and `ProxyName` left blank for you to fill in.
+   - **Showcase** — the 10:50 AM women's & kids matches: edit names, fill in scores.
+   - **Knockouts**, **FantasyPicks**, and **Bets** — knockout scores and the
+     site-submitted predictor/betting entries.
 
 ## 2. Entering results after each match
 
@@ -91,9 +106,6 @@ The **Knockouts** tab builds the elimination round from the standings automatica
 
 - The top 8 pair up by rank — 1 with 8, 2 with 7, 3 with 6, 4 with 5.
 - Semifinal 1 is (1/8) vs (3/6); Semifinal 2 is (2/7) vs (4/5); winners meet in the final.
-- The `Knockouts` tab also carries a row `W` for the Women's Doubles showcase match
-  (Team1 = Lopita/Tanima, Team2 = Sreya/Roopkatha). Enter its score there — it shows up
-  live on the showcase card in the schedule and settles the women's side bets.
 - Until all 16 league games are complete, the bracket is a live projection from the
   current standings; players tied on all tiebreakers are seeded in table order.
 - Enter semifinal/final scores in the auto-created `Knockouts` sheet tab (rows `SF1`,
@@ -149,7 +161,7 @@ Each wager pays out at **wager × the player's final multiplier**:
   between the two showcase pairs (Lopita/Tanima and Sreya/Roopkatha), any way they
   like. The winning pair pays **1.5×** and the losing pair **0.5×**: an even $10/$10
   split returns exactly the $20 staked, all-in on the winner pays $30, all-in on the
-  loser returns $10. The result comes from the `W` row of the `Knockouts` tab; until
+  loser returns $10. The result comes from the `W` row of the `Showcase` tab; until
   it's entered, the payout board counts side-pot stakes at face value. Side-pot
   stakes don't count toward the Perfect Portfolio's "exactly 8 players".
 
@@ -210,15 +222,12 @@ games and can't be carried over — those participants need to resubmit their pi
 Bets are per-player, so the `Bets` tab survives a schedule change (unless player
 names changed — "Suvankar" is now listed as "Suvankar Paul").
 
-**Adding the women's side bet to an existing Sheet** requires two manual touches
-(the script never edits existing tabs):
-
-1. In the `Bets` tab, append two header cells after the last player column, exactly:
-   `Lopita / Tanima` then `Sreya / Roopkatha`.
-2. In the `Knockouts` tab, add a row with `MatchId` = `W` (Match description:
-   "Women's Doubles showcase — Team1: Lopita/Tanima, Team2: Sreya/Roopkatha").
-
-Then redeploy the Apps Script with the latest `Code.gs`.
+**Upgrading an existing Sheet after a Code.gs update:** paste the latest `Code.gs`
+into the Apps Script editor, run **`upgradeSheets`** once from the Run menu, then
+redeploy (**Deploy → Manage deployments → edit → New version**). `upgradeSheets`
+creates any missing tabs (e.g. `Showcase`) and upgrades the `Bets` tab in place —
+renaming the old `Suvankar` column to `Suvankar Paul` and appending the two
+women's-pair columns — without touching any data rows.
 
 ## Local preview
 

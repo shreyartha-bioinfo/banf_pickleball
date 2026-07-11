@@ -30,10 +30,12 @@ const SHOWCASE_BREAK = {
   afterGameId: 8,
   note: "20-minute showcase after Game 8 — the men's league resumes at 11:10 AM.",
   matches: [
-    // resultId "W" = the Knockouts sheet row where this match's score is entered.
+    // resultId = MatchId of this match's row in the Sheet's "Showcase" tab.
+    // Team names entered there override the defaults below (that's how the
+    // kids 13–17 combos get filled in), and scores flip the match to Final.
     { label: "Women's Doubles", team1: ["Lopita", "Tanima"], team2: ["Sreya", "Roopkatha"], resultId: "W" },
-    { label: "Kids 13–17 Doubles", tbd: "Team combinations to be decided" },
-    { label: "Kids 7–13 Singles", team1: ["Oleen"], team2: ["Evaan"] }
+    { label: "Kids 13–17 Doubles", tbd: "Team combinations to be decided", resultId: "K1" },
+    { label: "Kids 7–13 Singles", team1: ["Oleen"], team2: ["Evaan"], resultId: "K2" }
   ]
 };
 
