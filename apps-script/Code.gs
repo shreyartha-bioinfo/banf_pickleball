@@ -19,18 +19,22 @@
  */
 
 const GAMES = [
-  { id: 1, court: "A", team1: ["Aayaan Roy", "Amit Chakrabarty"], team2: ["Partha Mukhopadhyay", "Dipra Ghosh"] },
-  { id: 2, court: "B", team1: ["Bhupal Dhar", "Siddharth Das Sarkar"], team2: ["Atmadeep Mazumdar", "Nabo Roy"] },
-  { id: 3, court: "A", team1: ["Suman Ghosh", "Madhu Sindhuvalli"], team2: ["Tarit Mondal", "Swayam Kundu"] },
-  { id: 4, court: "B", team1: ["Saikat Natta", "Souvik Ray"], team2: ["Suvankar", "Aayaan Roy"] },
-  { id: 5, court: "A", team1: ["Amit Chakrabarty", "Atmadeep Mazumdar"], team2: ["Suman Ghosh", "Nabo Roy"] },
-  { id: 6, court: "B", team1: ["Partha Mukhopadhyay", "Siddharth Das Sarkar"], team2: ["Madhu Sindhuvalli", "Souvik Ray"] },
-  { id: 7, court: "A", team1: ["Tarit Mondal", "Suvankar"], team2: ["Aayaan Roy", "Suman Ghosh"] },
-  { id: 8, court: "B", team1: ["Swayam Kundu", "Dipra Ghosh"], team2: ["Saikat Natta", "Amit Chakrabarty"] },
-  { id: 9, court: "A", team1: ["Nabo Roy", "Partha Mukhopadhyay"], team2: ["Siddharth Das Sarkar", "Suvankar"] },
-  { id: 10, court: "B", team1: ["Swarnendu Sen", "Bhupal Dhar"], team2: ["Madhu Sindhuvalli", "Swayam Kundu"] },
-  { id: 11, court: "A", team1: ["Swarnendu Sen", "Dipra Ghosh"], team2: ["Tarit Mondal", "Saikat Natta"] },
-  { id: 12, court: "B", team1: ["Swarnendu Sen", "Souvik Ray"], team2: ["Atmadeep Mazumdar", "Bhupal Dhar"] }
+  { id: 1, court: "A", time: "9:30 AM", team1: ["Partha Mukhopadhyay", "Nabo Roy"], team2: ["Tarit Mondal", "Saikat Natta"] },
+  { id: 2, court: "B", time: "9:30 AM", team1: ["Atmadeep Mazumdar", "Siddharth Das Sarkar"], team2: ["Bhupal Dhar", "Dipra Ghosh"] },
+  { id: 3, court: "A", time: "9:50 AM", team1: ["Suman Ghosh", "Dipra Ghosh"], team2: ["Tarit Mondal", "Swayam Kundu"] },
+  { id: 4, court: "B", time: "9:50 AM", team1: ["Saikat Natta", "Souvik Ray"], team2: ["Madhu Sindhuvalli", "Aayaan Roy"] },
+  { id: 5, court: "A", time: "10:10 AM", team1: ["Suman Ghosh", "Atmadeep Mazumdar"], team2: ["Amit Chakrabarty", "Nabo Roy"] },
+  { id: 6, court: "B", time: "10:10 AM", team1: ["Partha Mukhopadhyay", "Siddharth Das Sarkar"], team2: ["Madhu Sindhuvalli", "Souvik Ray"] },
+  { id: 7, court: "A", time: "10:30 AM", team1: ["Tarit Mondal", "Suvankar Paul"], team2: ["Aayaan Roy", "Suman Ghosh"] },
+  { id: 8, court: "B", time: "10:30 AM", team1: ["Swayam Kundu", "Dipra Ghosh"], team2: ["Saikat Natta", "Amit Chakrabarty"] },
+  { id: 9, court: "A", time: "11:10 AM", team1: ["Partha Mukhopadhyay", "Madhu Sindhuvalli"], team2: ["Siddharth Das Sarkar", "Nabo Roy"] },
+  { id: 10, court: "B", time: "11:10 AM", team1: ["Swarnendu Sen", "Bhupal Dhar"], team2: ["Suvankar Paul", "Swayam Kundu"] },
+  { id: 11, court: "A", time: "11:30 AM", team1: ["Swarnendu Sen", "Souvik Ray"], team2: ["Atmadeep Mazumdar", "Bhupal Dhar"] },
+  { id: 12, court: "B", time: "11:30 AM", team1: ["Aayaan Roy", "Amit Chakrabarty"], team2: ["Swarnendu Sen", "Suvankar Paul"] },
+  { id: 13, court: "A", time: "11:50 AM", team1: ["Partha Mukhopadhyay", "Swayam Kundu"], team2: ["Atmadeep Mazumdar", "Aayaan Roy"] },
+  { id: 14, court: "B", time: "11:50 AM", team1: ["Nabo Roy", "Souvik Ray"], team2: ["Siddharth Das Sarkar", "Amit Chakrabarty"] },
+  { id: 15, court: "A", time: "12:10 PM", team1: ["Tarit Mondal", "Madhu Sindhuvalli"], team2: ["Bhupal Dhar", "Suvankar Paul"] },
+  { id: 16, court: "B", time: "12:10 PM", team1: ["Saikat Natta", "Suman Ghosh"], team2: ["Swarnendu Sen", "Dipra Ghosh"] }
 ];
 
 // Predictor picks and bets lock at this moment (server-enforced). -04:00 = US Eastern in July.
@@ -39,7 +43,7 @@ const ENTRY_DEADLINE = "2026-07-12T10:00:00-04:00";
 const BET_BUDGET = 100; // virtual dollars per bettor
 
 const SCORES_SHEET = "Scores";
-const SCORES_HEADERS = ["GameId", "Court", "Team1", "Team2", "Team1Score", "Team2Score"];
+const SCORES_HEADERS = ["GameId", "Court", "Time", "Team1", "Team2", "Team1Score", "Team2Score"];
 
 const FANTASY_SHEET = "FantasyPicks"; // predictor entries (sheet name kept for compatibility)
 function fantasyHeaders_() {
@@ -249,7 +253,7 @@ function getOrCreateScoresSheet_() {
 
   sheet = ss.insertSheet(SCORES_SHEET);
   sheet.getRange(1, 1, 1, SCORES_HEADERS.length).setValues([SCORES_HEADERS]);
-  const rows = GAMES.map((g) => [g.id, g.court, g.team1.join(" / "), g.team2.join(" / "), "", ""]);
+  const rows = GAMES.map((g) => [g.id, g.court, g.time, g.team1.join(" / "), g.team2.join(" / "), "", ""]);
   sheet.getRange(2, 1, rows.length, SCORES_HEADERS.length).setValues(rows);
   sheet.setFrozenRows(1);
   sheet.autoResizeColumns(1, SCORES_HEADERS.length);

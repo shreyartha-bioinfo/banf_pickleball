@@ -5,6 +5,29 @@ standings, and a sidebar with rules, tips, and tutorial links. Built as plain
 HTML/CSS/JS so it can be hosted for free on GitHub Pages. The site is **read-only**
 — you enter results directly in a Google Sheet, and the site displays them live.
 
+## Match-day timeline
+
+The 16 men's league games run in pairs (Court A + Court B) every 20 minutes:
+
+| Time | Court A | Court B |
+| --- | --- | --- |
+| 9:30 AM | Game 1 | Game 2 |
+| 9:50 AM | Game 3 | Game 4 |
+| 10:10 AM | Game 5 | Game 6 |
+| 10:30 AM | Game 7 | Game 8 |
+| 10:50 AM | *Showcase break* | *Showcase break* |
+| 11:10 AM | Game 9 | Game 10 |
+| 11:30 AM | Game 11 | Game 12 |
+| 11:50 AM | Game 13 | Game 14 |
+| 12:10 PM | Game 15 | Game 16 |
+
+The **10:50 AM showcase break** (20 minutes, after Game 8) hosts the exhibition
+matches, all at the same time: Women's Doubles — Lopita/Tanima vs Sreya/Roopkatha;
+Kids 13–17 Doubles — team combinations to be decided; Kids 7–13 Singles — Oleen vs
+Evaan. These are display-only on the site and don't feed the men's standings,
+predictor, or betting. Times live in `js/schedule.js` (`time` per game, plus the
+`SHOWCASE_BREAK` constant).
+
 ## Live site
 
 Once GitHub Pages is enabled (see below), the site will be available at:
@@ -68,7 +91,7 @@ The **Knockouts** tab builds the elimination round from the standings automatica
 
 - The top 8 pair up by rank — 1 with 8, 2 with 7, 3 with 6, 4 with 5.
 - Semifinal 1 is (1/8) vs (3/6); Semifinal 2 is (2/7) vs (4/5); winners meet in the final.
-- Until all 12 league games are complete, the bracket is a live projection from the
+- Until all 16 league games are complete, the bracket is a live projection from the
   current standings; players tied on all tiebreakers are seeded in table order.
 - Enter semifinal/final scores in the auto-created `Knockouts` sheet tab (rows `SF1`,
   `SF2`, `F` — the Match column notes which seeds are Team1 vs Team2). The final's
@@ -77,7 +100,7 @@ The **Knockouts** tab builds the elimination round from the standings automatica
 
 ## Predictor game
 
-The **Predictor** tab lets anyone predict the winner of all 12 league games:
+The **Predictor** tab lets anyone predict the winner of all 16 league games:
 
 - Participants enter their name, tap a team in each game, and submit. Entries are
   stored in a `FantasyPicks` tab of the same Google Sheet (auto-created).
@@ -154,7 +177,7 @@ If two or more players are still tied after all four tiers, they share the same 
 ```
 index.html          Main page: schedule + standings + sidebar
 css/style.css        Styling
-js/schedule.js        The 12-game schedule (edit here to change teams/courts)
+js/schedule.js        The 16-game schedule + showcase break (edit here to change teams/courts/times)
 js/config.js           Your Google Apps Script Web App URL goes here
 js/app.js               Rendering + standings ranking logic (read-only, auto-refreshes)
 apps-script/Code.gs   Google Apps Script backend — serves the Sheet as JSON
@@ -164,8 +187,18 @@ apps-script/Code.gs   Google Apps Script backend — serves the Sheet as JSON
 
 Edit **both** `js/schedule.js` (used by the website) and the `GAMES` constant at the
 top of `apps-script/Code.gs` (used to pre-fill the Sheet tabs) — they must stay
-identical. Each game is an object with `id`, `court`, `team1` (array of two names),
-and `team2`. Game IDs must stay unique.
+identical. Each game is an object with `id`, `court`, `time`, `team1` (array of two
+names), and `team2`. Game IDs must stay unique.
+
+**If the Sheet tabs already exist when the schedule changes** (as with the move from
+the old 12-game draw to the current 16-game one): the script never overwrites
+existing tabs, so delete (or rename to keep as archive) the `Scores`, `PlayerStats`,
+and `FantasyPicks` tabs, run `initializeSheets` again to recreate them from the new
+schedule, and redeploy the Apps Script (**Deploy → Manage deployments → edit → New
+version**). Predictor entries submitted against the old schedule reference the old
+games and can't be carried over — those participants need to resubmit their picks.
+Bets are per-player, so the `Bets` tab survives a schedule change (unless player
+names changed — "Suvankar" is now listed as "Suvankar Paul").
 
 ## Local preview
 

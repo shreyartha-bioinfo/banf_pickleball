@@ -204,6 +204,35 @@
       .join("");
   }
 
+  function showcaseBreakCard() {
+    const card = document.createElement("article");
+    card.className = "game-card interlude-card";
+    const rows = SHOWCASE_BREAK.matches
+      .map((m) => {
+        const teams = m.tbd
+          ? `<span class="tbd">${escapeHtml(m.tbd)}</span>`
+          : `${escapeHtml(m.team1.join(" / "))} <span class="interlude-vs">vs</span> ${escapeHtml(m.team2.join(" / "))}`;
+        return `
+          <div class="interlude-row">
+            <span class="interlude-label">${escapeHtml(m.label)}</span>
+            <span class="interlude-teams">${teams}</span>
+          </div>
+        `;
+      })
+      .join("");
+    card.innerHTML = `
+      <div class="game-card-top">
+        <span class="game-number">Showcase Break</span>
+        <span class="badge-group">
+          <span class="time-badge">${escapeHtml(SHOWCASE_BREAK.time)}</span>
+        </span>
+      </div>
+      <p class="interlude-note">${escapeHtml(SHOWCASE_BREAK.note)}</p>
+      <div class="interlude-matches">${rows}</div>
+    `;
+    return card;
+  }
+
   function renderGames() {
     const hotness = betHotnessMap();
     gamesGrid.innerHTML = "";
@@ -221,6 +250,7 @@
           <span class="game-number">Game ${game.id}</span>
           <span class="badge-group">
             <span class="status-chip ${played ? "final" : "upcoming"}">${played ? "Final" : "Upcoming"}</span>
+            <span class="time-badge">${escapeHtml(game.time)}</span>
             <span class="court-badge">Court ${game.court}</span>
           </span>
         </div>
@@ -235,6 +265,9 @@
         </div>
       `;
       gamesGrid.appendChild(card);
+      if (game.id === SHOWCASE_BREAK.afterGameId) {
+        gamesGrid.appendChild(showcaseBreakCard());
+      }
     });
   }
 
@@ -314,6 +347,7 @@
       player: p,
       wins: totals[p].wins,
       played: totals[p].played,
+      scheduled: GAMES.filter((g) => g.team1.indexOf(p) !== -1 || g.team2.indexOf(p) !== -1).length,
       pointDiff: totals[p].pointDiff,
       aceDiff: totals[p].aces - totals[p].faultServes,
       headScore: headScore[p]
@@ -382,7 +416,7 @@
                     <td class="num">${r.pointDiff > 0 ? "+" : ""}${r.pointDiff}</td>
                     <td class="num">${r.aceDiff > 0 ? "+" : ""}${r.aceDiff}</td>
                     <td class="num">${r.headScore > 0 ? "+" : ""}${r.headScore}</td>
-                    <td class="num">${r.played}/3</td>
+                    <td class="num">${r.played}/${r.scheduled}</td>
                   </tr>
                 `;
               })
@@ -540,6 +574,7 @@
       row.innerHTML = `
         <div class="pick-meta">
           <span class="game-number">Game ${game.id}</span>
+          <span class="time-badge">${escapeHtml(game.time)}</span>
           <span class="court-badge">Court ${game.court}</span>
         </div>
         <div class="pick-options">
