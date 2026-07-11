@@ -166,6 +166,16 @@
     return `<span class="bet-hot" title="Crowd favourite — $${amount} in bets">${"💵".repeat(n)}</span>`;
   }
 
+  // 💵 for the women's pair holding strictly more side-pot money than the other.
+  function womensBetIcons(team) {
+    const totals = betsData.totals || {};
+    const mine = Number(totals[team]) || 0;
+    const other = WOMENS_TEAMS.filter((t) => t !== team)
+      .reduce((max, t) => Math.max(max, Number(totals[t]) || 0), 0);
+    if (mine <= 0 || mine <= other) return "";
+    return `<span class="bet-hot" title="Crowd favourite — $${mine} in side-pot bets">💵</span>`;
+  }
+
   // ---------- Crowd pick badges (majority of predictor picks per game) ----------
 
   // Returns { slot: 1|2, count, total } when one team holds a strict majority
@@ -246,9 +256,13 @@
         } else {
           const w1 = s && s.team1Score > s.team2Score;
           const w2 = s && s.team2Score > s.team1Score;
-          teams = `<span class="interlude-team${w1 ? " winner" : ""}">${escapeHtml(t1)}</span>
+          // Betting/predictor markers only exist for the women's match.
+          const isWomens = m.resultId === WOMENS_PICK_ID;
+          const extras1 = isWomens ? womensBetIcons(WOMENS_TEAMS[0]) + crowdPickBadge(WOMENS_PICK_ID, 1) : "";
+          const extras2 = isWomens ? womensBetIcons(WOMENS_TEAMS[1]) + crowdPickBadge(WOMENS_PICK_ID, 2) : "";
+          teams = `<span class="interlude-team${w1 ? " winner" : ""}">${escapeHtml(t1)}</span>${extras1}
             <span class="interlude-vs${s ? " score" : ""}">${s ? `${s.team1Score}–${s.team2Score}` : "vs"}</span>
-            <span class="interlude-team${w2 ? " winner" : ""}">${escapeHtml(t2)}</span>`;
+            <span class="interlude-team${w2 ? " winner" : ""}">${escapeHtml(t2)}</span>${extras2}`;
         }
         return `
           <div class="interlude-row">

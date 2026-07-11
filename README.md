@@ -39,6 +39,9 @@ The showcase matches are managed from the **Showcase** tab of the Google Sheet
 - **Scores:** fill in `Team1Score` / `Team2Score` after each match — the showcase
   card on the site marks that match **Final**, shows the score, and highlights the
   winner. The `W` row's score also settles the women's betting side pot.
+- **Markers:** the women's row carries the same live badges as the men's game cards —
+  📣 on the pair backed by the majority of predictor picks, and 💵 on the pair
+  holding more side-pot money.
 
 ## Live site
 
