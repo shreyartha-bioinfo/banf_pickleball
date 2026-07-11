@@ -1,4 +1,4 @@
-# BANF Sports Day 2026 — Men's Pickleball
+# BANF Sports Day 2026 — Pickleball
 
 A static website for the tournament: match schedule, live scores, auto-ranked
 standings, and a sidebar with rules, tips, and tutorial links. Built as plain
@@ -91,6 +91,9 @@ The **Knockouts** tab builds the elimination round from the standings automatica
 
 - The top 8 pair up by rank — 1 with 8, 2 with 7, 3 with 6, 4 with 5.
 - Semifinal 1 is (1/8) vs (3/6); Semifinal 2 is (2/7) vs (4/5); winners meet in the final.
+- The `Knockouts` tab also carries a row `W` for the Women's Doubles showcase match
+  (Team1 = Lopita/Tanima, Team2 = Sreya/Roopkatha). Enter its score there — it shows up
+  live on the showcase card in the schedule and settles the women's side bets.
 - Until all 16 league games are complete, the bracket is a live projection from the
   current standings; players tied on all tiebreakers are seeded in table order.
 - Enter semifinal/final scores in the auto-created `Knockouts` sheet tab (rows `SF1`,
@@ -142,6 +145,13 @@ Each wager pays out at **wager × the player's final multiplier**:
 - **💎 Perfect Portfolio** — bet on exactly 8 players and predict the qualifiers
   perfectly; if all 8 finish in the top 8, that bettor gets a flat +$50 and +0.5×
   added to every wager (any stake split counts — the full $100 need not be used).
+- **Women's Doubles side pot** — every bettor also gets a separate **$20** to split
+  between the two showcase pairs (Lopita/Tanima and Sreya/Roopkatha), any way they
+  like. The winning pair pays **1.5×** and the losing pair **0.5×**: an even $10/$10
+  split returns exactly the $20 staked, all-in on the winner pays $30, all-in on the
+  loser returns $10. The result comes from the `W` row of the `Knockouts` tab; until
+  it's entered, the payout board counts side-pot stakes at face value. Side-pot
+  stakes don't count toward the Perfect Portfolio's "exactly 8 players".
 
 The **Betting Leaderboard** on the Betting tab lists who has entered before the
 deadline, then switches to the full board once betting locks: bettors ranked by net
@@ -199,6 +209,16 @@ version**). Predictor entries submitted against the old schedule reference the o
 games and can't be carried over — those participants need to resubmit their picks.
 Bets are per-player, so the `Bets` tab survives a schedule change (unless player
 names changed — "Suvankar" is now listed as "Suvankar Paul").
+
+**Adding the women's side bet to an existing Sheet** requires two manual touches
+(the script never edits existing tabs):
+
+1. In the `Bets` tab, append two header cells after the last player column, exactly:
+   `Lopita / Tanima` then `Sreya / Roopkatha`.
+2. In the `Knockouts` tab, add a row with `MatchId` = `W` (Match description:
+   "Women's Doubles showcase — Team1: Lopita/Tanima, Team2: Sreya/Roopkatha").
+
+Then redeploy the Apps Script with the latest `Code.gs`.
 
 ## Local preview
 

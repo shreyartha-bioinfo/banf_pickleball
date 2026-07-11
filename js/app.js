@@ -23,6 +23,7 @@
   const bettingEntryCount = document.getElementById("betting-entry-count");
   const bettingNameInput = document.getElementById("betting-name");
   const bettingPlayersEl = document.getElementById("betting-players");
+  const bettingWomensEl = document.getElementById("betting-womens");
   const bettingProgress = document.getElementById("betting-progress");
   const bettingSubmitBtn = document.getElementById("betting-submit");
   const bettingMsg = document.getElementById("betting-msg");
@@ -46,6 +47,11 @@
   const AUTO_REFRESH_MS = 45000;
   const QUALIFY_RANK = 8;
   const BET_BUDGET = 100;
+  const WOMENS_BET_BUDGET = 20;
+  // Women's side bet: winning pair pays 1.5x, losing pair 0.5x — so an even
+  // $10/$10 split returns exactly the $20 staked.
+  const WOMENS_WIN_MULT = 1.5;
+  const WOMENS_LOSE_MULT = 0.5;
   const PICKS_STORAGE_KEY = "banfFantasyPicks";
   const NAME_STORAGE_KEY = "banfFantasyName";
   const BETS_STORAGE_KEY = "banfBets";
@@ -209,9 +215,13 @@
     card.className = "game-card interlude-card";
     const rows = SHOWCASE_BREAK.matches
       .map((m) => {
+        const s = m.resultId ? knockoutScore(m.resultId) : null;
+        const mid = s
+          ? `<span class="interlude-vs">${s.team1Score}–${s.team2Score}</span>`
+          : `<span class="interlude-vs">vs</span>`;
         const teams = m.tbd
           ? `<span class="tbd">${escapeHtml(m.tbd)}</span>`
-          : `${escapeHtml(m.team1.join(" / "))} <span class="interlude-vs">vs</span> ${escapeHtml(m.team2.join(" / "))}`;
+          : `${escapeHtml(m.team1.join(" / "))} ${mid} ${escapeHtml(m.team2.join(" / "))}`;
         return `
           <div class="interlude-row">
             <span class="interlude-label">${escapeHtml(m.label)}</span>
@@ -761,10 +771,37 @@
     return ALL_PLAYERS.reduce((sum, p) => sum + (Math.round(Number(myBets[p])) || 0), 0);
   }
 
+  function womensBetsTotal() {
+    return WOMENS_TEAMS.reduce((sum, t) => sum + (Math.round(Number(myBets[t])) || 0), 0);
+  }
+
   function updateBettingProgress() {
     const total = myBetsTotal();
-    bettingProgress.textContent = `Allocated: $${total} / $${BET_BUDGET}`;
-    bettingProgress.classList.toggle("over-budget", total > BET_BUDGET);
+    const wTotal = womensBetsTotal();
+    bettingProgress.textContent = `Allocated: $${total} / $${BET_BUDGET} · Women's: $${wTotal} / $${WOMENS_BET_BUDGET}`;
+    bettingProgress.classList.toggle("over-budget", total > BET_BUDGET || wTotal > WOMENS_BET_BUDGET);
+  }
+
+  function betRow(name, max) {
+    const row = document.createElement("div");
+    row.className = "bet-row";
+    row.innerHTML = `
+      <label class="bet-player-name">${escapeHtml(name)}</label>
+      <div class="bet-amount-wrap">
+        <span class="bet-currency">$</span>
+        <input type="number" class="bet-input" min="0" max="${max}" step="1" placeholder="0"
+          value="${myBets[name] ? Math.round(Number(myBets[name])) : ""}" aria-label="Bet on ${escapeHtml(name)}">
+      </div>
+    `;
+    const input = row.querySelector(".bet-input");
+    input.addEventListener("input", () => {
+      const v = Math.max(0, Math.round(Number(input.value)) || 0);
+      if (v === 0) delete myBets[name];
+      else myBets[name] = v;
+      localStorage.setItem(BETS_STORAGE_KEY, JSON.stringify(myBets));
+      updateBettingProgress();
+    });
+    return row;
   }
 
   function buildBettingForm() {
@@ -775,26 +812,14 @@
 
     bettingPlayersEl.innerHTML = "";
     ALL_PLAYERS.forEach((player) => {
-      const row = document.createElement("div");
-      row.className = "bet-row";
-      row.innerHTML = `
-        <label class="bet-player-name">${escapeHtml(player)}</label>
-        <div class="bet-amount-wrap">
-          <span class="bet-currency">$</span>
-          <input type="number" class="bet-input" min="0" max="${BET_BUDGET}" step="1" placeholder="0"
-            value="${myBets[player] ? Math.round(Number(myBets[player])) : ""}" aria-label="Bet on ${escapeHtml(player)}">
-        </div>
-      `;
-      const input = row.querySelector(".bet-input");
-      input.addEventListener("input", () => {
-        const v = Math.max(0, Math.round(Number(input.value)) || 0);
-        if (v === 0) delete myBets[player];
-        else myBets[player] = v;
-        localStorage.setItem(BETS_STORAGE_KEY, JSON.stringify(myBets));
-        updateBettingProgress();
-      });
-      bettingPlayersEl.appendChild(row);
+      bettingPlayersEl.appendChild(betRow(player, BET_BUDGET));
     });
+
+    bettingWomensEl.innerHTML = "";
+    WOMENS_TEAMS.forEach((team) => {
+      bettingWomensEl.appendChild(betRow(team, WOMENS_BET_BUDGET));
+    });
+
     updateBettingProgress();
   }
 
@@ -820,12 +845,17 @@
       return;
     }
     const total = myBetsTotal();
-    if (total <= 0) {
+    const wTotal = womensBetsTotal();
+    if (total + wTotal <= 0) {
       setBettingMsg("Place at least $1 on someone.", true);
       return;
     }
     if (total > BET_BUDGET) {
-      setBettingMsg(`You only have $${BET_BUDGET} to spread — you've allocated $${total}.`, true);
+      setBettingMsg(`You only have $${BET_BUDGET} to spread across the players — you've allocated $${total}.`, true);
+      return;
+    }
+    if (wTotal > WOMENS_BET_BUDGET) {
+      setBettingMsg(`The women's side pot is only $${WOMENS_BET_BUDGET} — you've allocated $${wTotal}.`, true);
       return;
     }
 
@@ -840,7 +870,7 @@
           setBettingMsg(data.message || "Couldn't place bets. Try again.", true);
           return;
         }
-        setBettingMsg(`Bets placed for ${name} ✓ — $${total} in play. Resubmit to change them until the deadline.`);
+        setBettingMsg(`Bets placed for ${name} ✓ — $${total + wTotal} in play. Resubmit to change them until the deadline.`);
         loadResults();
       })
       .catch((err) => {
@@ -901,13 +931,24 @@
   function computePayoutBoard() {
     const outcome = computeKnockoutOutcome();
 
+    // Women's Doubles side bet: winner slot 1|2 once the "W" score is in, else 0.
+    const wScore = knockoutScore("W");
+    const womensWinnerSlot =
+      wScore && wScore.team1Score !== wScore.team2Score
+        ? (wScore.team1Score > wScore.team2Score ? 1 : 2)
+        : 0;
+
     const rows = betsData.entries
       .filter((e) => e.bets)
       .map((entry) => {
         const betPlayers = ALL_PLAYERS.filter((p) => (Number(entry.bets[p]) || 0) > 0);
-        const staked = betPlayers.reduce((sum, p) => sum + Number(entry.bets[p]), 0);
+        const womensStakes = WOMENS_TEAMS.map((t) => Number(entry.bets[t]) || 0);
+        const staked =
+          betPlayers.reduce((sum, p) => sum + Number(entry.bets[p]), 0) +
+          womensStakes[0] + womensStakes[1];
 
-        // Perfect Portfolio: bets spread across exactly 8 players, all of whom qualify.
+        // Perfect Portfolio: bets spread across exactly 8 players, all of whom
+        // qualify. Women's side-pot stakes don't count toward the 8.
         const isPerfect =
           betPlayers.length === 8 &&
           betPlayers.every((p) => outcome.seedNames.indexOf(p) !== -1);
@@ -922,6 +963,13 @@
           }
           payout += Number(entry.bets[p]) * mult;
         });
+
+        // Until the women's match is decided, side-pot stakes ride at face value.
+        payout +=
+          womensWinnerSlot === 0
+            ? womensStakes[0] + womensStakes[1]
+            : womensStakes[womensWinnerSlot - 1] * WOMENS_WIN_MULT +
+              womensStakes[2 - womensWinnerSlot] * WOMENS_LOSE_MULT;
 
         return {
           name: entry.name,
@@ -1013,11 +1061,12 @@
 
   function renderBetCloud() {
     const totals = betsData.totals || {};
-    const max = Math.max(1, ...ALL_PLAYERS.map((p) => Number(totals[p]) || 0));
-    const pot = ALL_PLAYERS.reduce((sum, p) => sum + (Number(totals[p]) || 0), 0);
+    const cloudNames = ALL_PLAYERS.concat(WOMENS_TEAMS);
+    const max = Math.max(1, ...cloudNames.map((p) => Number(totals[p]) || 0));
+    const pot = cloudNames.reduce((sum, p) => sum + (Number(totals[p]) || 0), 0);
     const colors = ["cloud-navy", "cloud-green", "cloud-soft", "cloud-gold"];
 
-    const ordered = ALL_PLAYERS.slice().sort((a, b) => cloudOrderKey(a) - cloudOrderKey(b));
+    const ordered = cloudNames.slice().sort((a, b) => cloudOrderKey(a) - cloudOrderKey(b));
 
     bettingCloud.innerHTML = ordered
       .map((p, i) => {

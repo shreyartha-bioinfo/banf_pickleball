@@ -10,8 +10,9 @@
  *   - "Scores": one row per game — fill in Team1Score / Team2Score after each match.
  *   - "PlayerStats": one row per player per game — fill in Aces / FaultServes,
  *     and mark Absent (+ optional ProxyName) if a player was a no-show.
- *   - "Knockouts": semifinal/final scores — fill in Team1Score / Team2Score
- *     (the Match column says which seeds are Team1 vs Team2).
+ *   - "Knockouts": semifinal/final scores plus the Women's Doubles showcase
+ *     (row "W") — fill in Team1Score / Team2Score (the Match column says
+ *     which seeds/pairs are Team1 vs Team2).
  *   - "FantasyPicks": predictor entries submitted from the site (auto-managed).
  *   - "Bets": virtual-money bets submitted from the site (auto-managed).
  *
@@ -40,7 +41,13 @@ const GAMES = [
 // Predictor picks and bets lock at this moment (server-enforced). -04:00 = US Eastern in July.
 const ENTRY_DEADLINE = "2026-07-12T10:00:00-04:00";
 
-const BET_BUDGET = 100; // virtual dollars per bettor
+const BET_BUDGET = 100; // virtual dollars per bettor (men's tournament)
+
+// Women's Doubles side bet: separate $20 pot on the 10:50 AM showcase match.
+// Team order must match the "W" row in the Knockouts sheet (Team1 = Lopita/Tanima)
+// and WOMENS_TEAMS in js/schedule.js. Payout: winner 1.5x, loser 0.5x.
+const WOMENS_TEAMS = ["Lopita / Tanima", "Sreya / Roopkatha"];
+const WOMENS_BET_BUDGET = 20;
 
 const SCORES_SHEET = "Scores";
 const SCORES_HEADERS = ["GameId", "Court", "Time", "Team1", "Team2", "Team1Score", "Team2Score"];
@@ -55,7 +62,8 @@ const KNOCKOUTS_HEADERS = ["MatchId", "Match", "Team1Score", "Team2Score"];
 const KNOCKOUT_MATCHES = [
   ["SF1", "Semifinal 1 — Team1: seeds 1+8, Team2: seeds 3+6"],
   ["SF2", "Semifinal 2 — Team1: seeds 2+7, Team2: seeds 4+5"],
-  ["F", "Final — Team1: SF1 winner, Team2: SF2 winner"]
+  ["F", "Final — Team1: SF1 winner, Team2: SF2 winner"],
+  ["W", "Women's Doubles showcase — Team1: Lopita/Tanima, Team2: Sreya/Roopkatha"]
 ];
 
 const BETS_SHEET = "Bets";
@@ -65,7 +73,7 @@ function playersSorted_() {
   return Object.keys(seen).sort();
 }
 function betsHeaders_() {
-  return ["Name", "SubmittedAt"].concat(playersSorted_());
+  return ["Name", "SubmittedAt"].concat(playersSorted_()).concat(WOMENS_TEAMS);
 }
 
 const STATS_SHEET = "PlayerStats";
@@ -105,14 +113,15 @@ function doGet(e) {
 
   // Bets: aggregate totals always; individual allocations only after lock
   // (needed for the payout board — private while betting is open).
-  const players = playersSorted_();
+  // Women's Doubles pairs ride along as two extra "names" in the same maps.
+  const betNames = playersSorted_().concat(WOMENS_TEAMS);
   const totals = {};
-  players.forEach((p) => (totals[p] = 0));
+  betNames.forEach((p) => (totals[p] = 0));
   const betEntries = sheetToObjects_(betsSheet).map((row) => {
-    players.forEach((p) => (totals[p] += Number(row[p]) || 0));
+    betNames.forEach((p) => (totals[p] += Number(row[p]) || 0));
     if (!locked) return {};
     const entry = { name: row.Name, submittedAt: row.SubmittedAt, bets: {} };
-    players.forEach((p) => (entry.bets[p] = Number(row[p]) || 0));
+    betNames.forEach((p) => (entry.bets[p] = Number(row[p]) || 0));
     return entry;
   });
 
@@ -175,17 +184,27 @@ function handleBetsPost_(payload) {
     total += v;
     return v;
   });
-  if (amounts.some(isNaN)) {
+  let womensTotal = 0;
+  const womensAmounts = WOMENS_TEAMS.map(function (t) {
+    const v = Math.round(Number(bets[t]) || 0);
+    if (v < 0) return NaN;
+    womensTotal += v;
+    return v;
+  });
+  if (amounts.some(isNaN) || womensAmounts.some(isNaN)) {
     return jsonResponse_({ status: "error", message: "Bet amounts must be positive whole dollars." });
   }
-  if (total <= 0) {
+  if (total + womensTotal <= 0) {
     return jsonResponse_({ status: "error", message: "Place at least $1 on someone." });
   }
   if (total > BET_BUDGET) {
-    return jsonResponse_({ status: "error", message: "You only have $" + BET_BUDGET + " to spread — total is $" + total + "." });
+    return jsonResponse_({ status: "error", message: "You only have $" + BET_BUDGET + " to spread across the players — total is $" + total + "." });
+  }
+  if (womensTotal > WOMENS_BET_BUDGET) {
+    return jsonResponse_({ status: "error", message: "The women's side pot is only $" + WOMENS_BET_BUDGET + " — total is $" + womensTotal + "." });
   }
 
-  const row = [name, new Date()].concat(amounts);
+  const row = [name, new Date()].concat(amounts).concat(womensAmounts);
   upsertRowByName_(getOrCreateBetsSheet_(), name, row);
   return jsonResponse_({ status: "ok" });
 }

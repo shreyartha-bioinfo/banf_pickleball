@@ -30,8 +30,13 @@ const SHOWCASE_BREAK = {
   afterGameId: 8,
   note: "20-minute showcase after Game 8 — the men's league resumes at 11:10 AM.",
   matches: [
-    { label: "Women's Doubles", team1: ["Lopita", "Tanima"], team2: ["Sreya", "Roopkatha"] },
+    // resultId "W" = the Knockouts sheet row where this match's score is entered.
+    { label: "Women's Doubles", team1: ["Lopita", "Tanima"], team2: ["Sreya", "Roopkatha"], resultId: "W" },
     { label: "Kids 13–17 Doubles", tbd: "Team combinations to be decided" },
     { label: "Kids 7–13 Singles", team1: ["Oleen"], team2: ["Evaan"] }
   ]
 };
+
+// Women's Doubles side bet: the two pairs, in Team1/Team2 order of the "W"
+// Knockouts row. Must match WOMENS_TEAMS in apps-script/Code.gs.
+const WOMENS_TEAMS = ["Lopita / Tanima", "Sreya / Roopkatha"];

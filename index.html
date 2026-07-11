@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BANF Sports Day 2026 — Men's Pickleball</title>
-<meta name="description" content="BANF Sports Day 2026 Men's Pickleball — live schedule, score entry, rules, tips and tutorials.">
+<title>BANF Sports Day 2026 — Pickleball</title>
+<meta name="description" content="BANF Sports Day 2026 Pickleball — live schedule, score entry, rules, tips and tutorials.">
 <link rel="icon" type="image/svg+xml" href="assets/pickleball-icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- Bump ?v= on every deploy that changes CSS/JS so browsers fetch fresh copies -->
-<link rel="stylesheet" href="css/style.css?v=20">
+<link rel="stylesheet" href="css/style.css?v=21">
 </head>
 <body>
 
@@ -20,7 +20,7 @@
       <img class="brand-icon" src="assets/pickleball-icon.svg" alt="" aria-hidden="true">
       <div>
         <p class="kicker">BANF Sports Day · 2026</p>
-        <h1>Men's Pickleball Tournament</h1>
+        <h1>Pickleball Tournament</h1>
         <ul class="event-meta">
           <li>First Serve 9:30 AM</li>
           <li>16 Games</li>
@@ -137,13 +137,22 @@
           across several. Payouts follow the multiplier rules below: table rank sets the
           base, knockout wins stack bonuses on top, and a <strong>Perfect Portfolio</strong>
           (betting on exactly the 8 players who qualify) earns a flat $50 and a +0.5×
-          boost. Bets lock at <strong>10:00 AM (ET), Sunday July 12, 2026</strong>.
+          boost. On top of that you get a separate <strong>$20 side pot</strong> for the
+          Women's Doubles showcase match. Bets lock at
+          <strong>10:00 AM (ET), Sunday July 12, 2026</strong>.
           Submitting again with the same name replaces your earlier bets. Individual bets
           stay private until betting closes; the word cloud shows only combined totals.
         </p>
         <label class="fantasy-name-label" for="betting-name">Your name</label>
         <input id="betting-name" class="fantasy-name-input" type="text" maxlength="40" placeholder="e.g. Rahul B" autocomplete="name">
+        <label class="fantasy-name-label">Men's tournament — $100 budget</label>
         <div id="betting-players" class="betting-players"></div>
+        <label class="fantasy-name-label">Women's Doubles side pot — extra $20</label>
+        <p class="hint">Split up to $20 between the two pairs, any way you like. The winning
+        pair pays <strong>1.5×</strong>, the losing pair <strong>0.5×</strong> — so an even
+        $10/$10 split returns exactly your $20, and going all-in on the winner turns $20
+        into $30.</p>
+        <div id="betting-womens" class="betting-players"></div>
         <div class="fantasy-actions">
           <span id="betting-progress" class="fantasy-progress"></span>
           <button id="betting-submit" class="btn btn-primary" type="button">Place Bets</button>
@@ -195,6 +204,10 @@
             flat <b>+$50</b> bonus and <b>+0.5×</b> added to every one of your wagers.</li>
           <li><strong>Tied ranks:</strong> players sharing a table rank both get that
             rank's (higher) multiplier — e.g. two players tied at 2nd both pay 1.7×.</li>
+          <li><strong>Women's Doubles side pot:</strong> a separate $20 budget on the
+            10:50 AM showcase match (Lopita/Tanima vs Sreya/Roopkatha). The winning pair
+            pays <b>1.5×</b>, the losing pair <b>0.5×</b> — an even $10/$10 split breaks
+            even, all-in on the winner pays $30, all-in on the loser returns $10.</li>
           <li><strong>Example:</strong> $10 on the player who tops the table (1.8×), wins
             their semifinal (+0.8×) and the final (+1.5×) → 4.1× → <b>$41</b>.</li>
         </ul>
@@ -250,11 +263,11 @@
 
 <footer class="site-footer">
   <img class="footer-icon" src="assets/pickleball-icon.svg" alt="" aria-hidden="true">
-  <p>BANF Sports Day 2026 · Men's Pickleball · Built for the community</p>
+  <p>BANF Sports Day 2026 · Pickleball · Built for the community</p>
 </footer>
 
-<script src="js/config.js?v=20"></script>
-<script src="js/schedule.js?v=20"></script>
-<script src="js/app.js?v=20"></script>
+<script src="js/config.js?v=21"></script>
+<script src="js/schedule.js?v=21"></script>
+<script src="js/app.js?v=21"></script>
 </body>
 </html>
