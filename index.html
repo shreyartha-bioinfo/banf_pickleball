@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BANF Sports Day 2026 — Men's Pickleball</title>
+<meta name="description" content="BANF Sports Day 2026 Men's Pickleball — live schedule, score entry, rules, tips and tutorials.">
+<link rel="icon" type="image/svg+xml" href="assets/pickleball-icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Bump ?v= on every deploy that changes CSS/JS so browsers fetch fresh copies -->
+<link rel="stylesheet" href="css/style.css?v=19">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      <img class="brand-icon" src="assets/pickleball-icon.svg" alt="" aria-hidden="true">
+      <div>
+        <p class="kicker">BANF Sports Day · 2026</p>
+        <h1>Men's Pickleball Tournament</h1>
+        <ul class="event-meta">
+          <li>First Serve 9:30 AM</li>
+          <li>16 Games</li>
+          <li>2 Courts</li>
+          <li>16 Players</li>
+          <li>Top 8 Qualify</li>
+        </ul>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="refresh-btn" class="btn btn-ghost" title="Reload latest results">
+        <span id="refresh-icon">⟳</span> Refresh
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+
+  <section class="schedule-panel">
+    <nav class="tab-bar" aria-label="Sections">
+      <button class="tab-btn active" id="tab-btn-schedule" type="button">Schedule &amp; Standings</button>
+      <button class="tab-btn" id="tab-btn-knockouts" type="button">Knockouts</button>
+      <button class="tab-btn" id="tab-btn-fantasy" type="button">Predictor</button>
+      <button class="tab-btn" id="tab-btn-betting" type="button">Betting</button>
+    </nav>
+
+    <div id="tab-schedule">
+      <div class="panel-heading">
+        <h2>Match Schedule &amp; Results</h2>
+        <p id="status-line" class="status-line">Loading results…</p>
+      </div>
+
+      <div id="games-grid" class="games-grid" aria-live="polite"></div>
+
+      <div id="standings" class="standings">
+        <div class="standings-heading">
+          <h3>Standings</h3>
+          <span class="cut-tag">Top 8 Qualify</span>
+        </div>
+        <p class="hint">
+          Ranked automatically after every match by: 1) Wins, 2) Point differential
+          (points scored − points conceded across a player's 4 games), 3) Aces − False
+          Serves, 4) Head-to-head. Players tied on all four share the same rank.
+        </p>
+        <div id="standings-table"></div>
+      </div>
+    </div>
+
+    <div id="tab-knockouts" hidden>
+      <div class="panel-heading">
+        <h2>Knockout Bracket</h2>
+        <p id="knockout-status-line" class="status-line"></p>
+      </div>
+      <p class="hint">
+        The top 8 pair up by rank — 1 with 8, 2 with 7, 3 with 6, 4 with 5. Semifinal 1
+        is (1/8) vs (3/6), Semifinal 2 is (2/7) vs (4/5), and the winners meet in the
+        final. Until all 16 league games are complete this bracket is a live projection
+        from the current standings and can change with every result; players tied on all
+        tiebreakers are seeded in table order until the tie resolves on court.
+      </p>
+      <div id="bracket" class="bracket"></div>
+    </div>
+
+    <div id="tab-fantasy" hidden>
+      <div class="panel-heading">
+        <h2>Predictor — Pick the Winners</h2>
+        <p id="fantasy-deadline-line" class="status-line"></p>
+      </div>
+
+      <div id="fantasy-form-card" class="fantasy-card">
+        <p class="hint">
+          Predict the winner of all 16 league games. Entries lock at
+          <strong>10:00 AM (ET), Sunday July 12, 2026</strong> — after that, picks are
+          frozen and the leaderboard takes over. Submitting again with the same name
+          before the deadline replaces your earlier picks.
+        </p>
+        <label class="fantasy-name-label" for="fantasy-name">Your name</label>
+        <input id="fantasy-name" class="fantasy-name-input" type="text" maxlength="40" placeholder="e.g. Rahul B" autocomplete="name">
+        <div id="fantasy-games" class="fantasy-games"></div>
+        <div class="fantasy-actions">
+          <span id="fantasy-progress" class="fantasy-progress"></span>
+          <button id="fantasy-submit" class="btn btn-primary" type="button">Submit Picks</button>
+        </div>
+        <p id="fantasy-msg" class="fantasy-msg"></p>
+      </div>
+
+      <div id="fantasy-locked-card" class="fantasy-card" hidden>
+        <p class="locked-note">🔒 Picks are locked. Good luck to all
+          <span id="fantasy-entry-count"></span> participants!</p>
+      </div>
+
+      <div class="standings" id="fantasy-leaderboard-card">
+        <div class="standings-heading">
+          <h3>Predictor Leaderboard</h3>
+          <span class="cut-tag">Most Correct Picks</span>
+        </div>
+        <p class="hint">One point per correctly picked winner; only completed games count.
+        Ties share a rank.</p>
+        <div id="fantasy-leaderboard"></div>
+      </div>
+    </div>
+
+    <div id="tab-betting" hidden>
+      <div class="panel-heading">
+        <h2>Betting — Back Your Champion</h2>
+        <p id="betting-deadline-line" class="status-line"></p>
+      </div>
+
+      <div id="betting-form-card" class="fantasy-card">
+        <p class="hint">
+          You have <strong>$100 of virtual money</strong> to spread across the players
+          you think will finish high and go all the way — all on one favourite, or split
+          across several. Payouts follow the multiplier rules below: table rank sets the
+          base, knockout wins stack bonuses on top, and a <strong>Perfect Portfolio</strong>
+          (betting on exactly the 8 players who qualify) earns a flat $50 and a +0.5×
+          boost. Bets lock at <strong>10:00 AM (ET), Sunday July 12, 2026</strong>.
+          Submitting again with the same name replaces your earlier bets. Individual bets
+          stay private until betting closes; the word cloud shows only combined totals.
+        </p>
+        <label class="fantasy-name-label" for="betting-name">Your name</label>
+        <input id="betting-name" class="fantasy-name-input" type="text" maxlength="40" placeholder="e.g. Rahul B" autocomplete="name">
+        <div id="betting-players" class="betting-players"></div>
+        <div class="fantasy-actions">
+          <span id="betting-progress" class="fantasy-progress"></span>
+          <button id="betting-submit" class="btn btn-primary" type="button">Place Bets</button>
+        </div>
+        <p id="betting-msg" class="fantasy-msg"></p>
+      </div>
+
+      <div id="betting-locked-card" class="fantasy-card" hidden>
+        <p class="locked-note">🔒 Betting is closed. <span id="betting-entry-count"></span> bettors are in — may the best picks win!</p>
+      </div>
+
+      <div class="standings" id="betting-payouts-card">
+        <div class="standings-heading">
+          <h3>Betting Leaderboard</h3>
+          <span class="cut-tag" id="payout-stage-tag">Projected</span>
+        </div>
+        <p class="hint">Bettors ranked by net profit (payout minus stake) under the
+        multiplier rules, updating live as standings and knockout results come in.
+        💎 marks a Perfect Portfolio. Ties share a rank.</p>
+        <div id="betting-payouts"></div>
+      </div>
+
+      <div class="standings" id="betting-cloud-card">
+        <div class="standings-heading">
+          <h3>The Money Cloud</h3>
+          <span class="cut-tag">Where the Bets Are</span>
+        </div>
+        <p class="hint" id="betting-pot-line">Player names grow as more money is placed on them.</p>
+        <div id="betting-cloud" class="bet-cloud"></div>
+      </div>
+
+      <div class="standings" id="betting-rules-card">
+        <div class="standings-heading">
+          <h3>How Payouts Work</h3>
+          <span class="cut-tag">Multipliers</span>
+        </div>
+        <p class="hint">Each wager pays out at: <strong>wager × the player's final multiplier</strong>.</p>
+        <ul class="payout-rules">
+          <li><strong>Table stage:</strong> a player finishing 9th–16th doesn't qualify —
+            that wager is lost (0×). The top 8 secure a base multiplier by exact rank:
+            <span class="mult-strip">
+              <span>1st <b>1.8×</b></span><span>2nd <b>1.7×</b></span><span>3rd <b>1.6×</b></span><span>4th <b>1.5×</b></span><span>5th <b>1.4×</b></span><span>6th <b>1.3×</b></span><span>7th <b>1.2×</b></span><span>8th <b>1.1×</b></span>
+            </span>
+          </li>
+          <li><strong>Knockout bonuses (stack on top):</strong> semifinal win adds
+            <b>+0.8×</b>; winning the championship adds <b>+1.5×</b>.</li>
+          <li><strong>💎 Perfect Portfolio:</strong> bet on <b>exactly 8 players</b> and
+            predict the qualifiers perfectly — if all 8 finish in the top 8, you get a
+            flat <b>+$50</b> bonus and <b>+0.5×</b> added to every one of your wagers.</li>
+          <li><strong>Tied ranks:</strong> players sharing a table rank both get that
+            rank's (higher) multiplier — e.g. two players tied at 2nd both pay 1.7×.</li>
+          <li><strong>Example:</strong> $10 on the player who tops the table (1.8×), wins
+            their semifinal (+0.8×) and the final (+1.5×) → 4.1× → <b>$41</b>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <aside class="sidebar">
+
+    <div class="side-card">
+      <p class="card-kicker">Quick Reference</p>
+      <h3>Pickleball Rules</h3>
+      <ul>
+        <li><strong>Serve:</strong> Underhand, diagonally cross-court, paddle contact below waist level.</li>
+        <li><strong>Two-bounce rule:</strong> The ball must bounce once on each side before volleys are allowed (serve, then return).</li>
+        <li><strong>The Kitchen:</strong> The 7 ft non-volley zone at the net — you can't volley the ball while standing in it (or on its line).</li>
+        <li><strong>Scoring (Rally Scoring):</strong> Games are typically played to 11, win by 2. Every rally scores a point — for whichever side wins it, serving or returning. Unlike traditional side-out scoring, there's no "free" rally.</li>
+        <li><strong>Doubles serving:</strong> Both players on a side get to serve before the side loses the serve — except at the very start of the game (first server only). Serve still rotates the same way; rally scoring only changes who's allowed to score, not who's allowed to serve.</li>
+        <li><strong>Faults:</strong> Ball out of bounds, into the net, a volley from the kitchen, or a double bounce ends the rally.</li>
+        <li><strong>Line calls:</strong> A ball touching any part of the line is "in."</li>
+      </ul>
+    </div>
+
+    <div class="side-card">
+      <p class="card-kicker">On Court</p>
+      <h3>Tips for Match Day</h3>
+      <ul>
+        <li>It's rally scoring, so every point is live — play returns as aggressively as serves, there's no rally to coast through.</li>
+        <li>Stay out of the kitchen unless you're moving in to hit a bounced ball.</li>
+        <li>Third shot drop: soften your return so the opponents can't smash it back.</li>
+        <li>Communicate with your partner — call "mine," "yours," or "switch" early.</li>
+        <li>Return deep to push opponents back from the net.</li>
+        <li>Warm up your wrist and shoulder — pickleball involves a lot of quick, short strokes.</li>
+        <li>Hydrate between games, especially with back-to-back matches on the same court.</li>
+      </ul>
+    </div>
+
+    <div class="side-card">
+      <p class="card-kicker">Watch &amp; Learn</p>
+      <h3>Tutorials &amp; Resources</h3>
+      <ul class="link-list">
+        <li><a href="https://www.youtube.com/results?search_query=pickleball+rules+explained" target="_blank" rel="noopener">Pickleball rules explained (YouTube search)</a></li>
+        <li><a href="https://www.youtube.com/results?search_query=pickleball+beginner+tutorial" target="_blank" rel="noopener">Beginner tutorial basics (YouTube search)</a></li>
+        <li><a href="https://www.youtube.com/results?search_query=pickleball+third+shot+drop" target="_blank" rel="noopener">Third shot drop technique (YouTube search)</a></li>
+        <li><a href="https://www.youtube.com/results?search_query=pickleball+doubles+strategy" target="_blank" rel="noopener">Doubles strategy (YouTube search)</a></li>
+        <li><a href="https://usapickleball.org/" target="_blank" rel="noopener">USA Pickleball — official rulebook &amp; resources</a></li>
+      </ul>
+    </div>
+
+  </aside>
+
+</main>
+
+<footer class="site-footer">
+  <img class="footer-icon" src="assets/pickleball-icon.svg" alt="" aria-hidden="true">
+  <p>BANF Sports Day 2026 · Men's Pickleball · Built for the community</p>
+</footer>
+
+<script src="js/config.js?v=19"></script>
+<script src="js/schedule.js?v=19"></script>
+<script src="js/app.js?v=19"></script>
+</body>
+</html>
