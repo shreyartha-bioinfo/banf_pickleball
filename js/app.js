@@ -68,9 +68,9 @@
   // statsByGamePlayer["gameId|Player"] = { aces, faultServes, absent, proxyName }
   let statsByGamePlayer = {};
   // fantasy (predictor): { locked, deadline, entries: [{ name, submittedAt, picks? }], pickCounts: {gameId: {1: n, 2: m}} }
-  let fantasyData = { locked: false, deadline: CONFIG.FANTASY_DEADLINE, entries: [], pickCounts: {} };
+  let fantasyData = { start: CONFIG.PREDICTOR_START, lockedGames: {}, namesRevealed: false, entries: [], pickCounts: {} };
   // bets: { locked, deadline, entries: [{ name }], totals: { playerName: dollars } }
-  let betsData = { locked: false, deadline: CONFIG.FANTASY_DEADLINE, entries: [], totals: {} };
+  let betsData = { locked: false, wLocked: false, deadline: CONFIG.BETTING_DEADLINE, entries: [], totals: {} };
   // knockoutScores["SF1"|"SF2"|"F"] = { team1Score, team2Score }
   let knockoutScores = {};
   // showcaseByMatch["W"|"K1"|"K2"] = Showcase sheet row (Team1, Team2, Team1Score, Team2Score)
@@ -187,7 +187,7 @@
     if (counts) {
       c1 = Number(counts[1]) || 0;
       c2 = Number(counts[2]) || 0;
-    } else if (fantasyLocked()) {
+    } else {
       // Older backend without pickCounts: derive from revealed entries post-lock.
       fantasyData.entries.forEach((e) => {
         if (!e.picks) return;
@@ -592,10 +592,50 @@
 
   // ---------- Fantasy ----------
 
-  function fantasyLocked() {
-    if (fantasyData.locked === true) return true;
-    const deadlineMs = new Date(fantasyData.deadline || CONFIG.FANTASY_DEADLINE).getTime();
+  // Rolling pair locks: pair 1 locks at PREDICTOR_START; pair k locks once every
+  // game of pair k-1 has a score. A pair whose own game already has a score is
+  // locked regardless. The women's pick locks when Games 7 & 8 are done (the
+  // showcase follows them) or once its own result exists. Server lock state is
+  // trusted first, this local mirror is the fallback.
+  function pairIdsOf(k) {
+    return GAMES.filter((g) => Math.ceil(g.id / 2) === k).map((g) => g.id);
+  }
+
+  function isPickLocked(key) {
+    if ((fantasyData.lockedGames || {})[key]) return true;
+    if (key === WOMENS_PICK_ID) {
+      if (showcaseScore(WOMENS_PICK_ID)) return true;
+      return pairIdsOf(4).every((id) => hasScore(id));
+    }
+    const k = Math.ceil(Number(key) / 2);
+    if (pairIdsOf(k).some((id) => hasScore(id))) return true;
+    if (k === 1) {
+      const startMs = new Date(fantasyData.start || CONFIG.PREDICTOR_START).getTime();
+      return !isNaN(startMs) && Date.now() >= startMs;
+    }
+    return pairIdsOf(k - 1).every((id) => hasScore(id));
+  }
+
+  function allPickKeys() {
+    return GAMES.map((g) => g.id).concat([WOMENS_PICK_ID]);
+  }
+
+  function openPickKeys() {
+    return allPickKeys().filter((k) => !isPickLocked(k));
+  }
+
+  function allPredictorLocked() {
+    return openPickKeys().length === 0;
+  }
+
+  function bettingLocked() {
+    if (betsData.locked === true) return true;
+    const deadlineMs = new Date(betsData.deadline || CONFIG.BETTING_DEADLINE).getTime();
     return !isNaN(deadlineMs) && Date.now() >= deadlineMs;
+  }
+
+  function womensBetLocked() {
+    return bettingLocked() || betsData.wLocked === true || isPickLocked(WOMENS_PICK_ID);
   }
 
   function loadMyPicks() {
@@ -607,47 +647,52 @@
   }
 
   let myPicks = loadMyPicks();
-  let fantasyFormBuilt = false;
+  let fantasyFormSignature = null;
 
   function pickedSlot(key) {
     return myPicks[key] === 1 || myPicks[key] === 2;
   }
 
   function updateFantasyProgress() {
-    const picked =
-      GAMES.filter((g) => pickedSlot(g.id)).length + (pickedSlot(WOMENS_PICK_ID) ? 1 : 0);
-    fantasyProgress.textContent = `${picked}/${TOTAL_PICKS} picks made`;
+    const open = openPickKeys();
+    const picked = open.filter((k) => pickedSlot(k)).length;
+    fantasyProgress.textContent = `${picked}/${open.length} open picks made`;
   }
 
   function pickRow(pickKey, metaHtml, option1, option2) {
+    const locked = isPickLocked(pickKey);
     const row = document.createElement("div");
-    row.className = "pick-row";
+    row.className = "pick-row" + (locked ? " pick-row-locked" : "");
     row.innerHTML = `
-      <div class="pick-meta">${metaHtml}</div>
+      <div class="pick-meta">${metaHtml}${locked ? ' <span class="status-chip upcoming">🔒 Locked</span>' : ""}</div>
       <div class="pick-options">
-        <button type="button" class="pick-btn" data-slot="1">${escapeHtml(option1)}</button>
-        <button type="button" class="pick-btn" data-slot="2">${escapeHtml(option2)}</button>
+        <button type="button" class="pick-btn" data-slot="1" ${locked ? "disabled" : ""}>${escapeHtml(option1)}</button>
+        <button type="button" class="pick-btn" data-slot="2" ${locked ? "disabled" : ""}>${escapeHtml(option2)}</button>
       </div>
     `;
     const buttons = row.querySelectorAll(".pick-btn");
     buttons.forEach((btn) => {
       const slot = Number(btn.dataset.slot);
       if (myPicks[pickKey] === slot) btn.classList.add("selected");
-      btn.addEventListener("click", () => {
-        myPicks[pickKey] = slot;
-        localStorage.setItem(PICKS_STORAGE_KEY, JSON.stringify(myPicks));
-        buttons.forEach((b) => b.classList.toggle("selected", Number(b.dataset.slot) === slot));
-        updateFantasyProgress();
-      });
+      if (!locked) {
+        btn.addEventListener("click", () => {
+          myPicks[pickKey] = slot;
+          localStorage.setItem(PICKS_STORAGE_KEY, JSON.stringify(myPicks));
+          buttons.forEach((b) => b.classList.toggle("selected", Number(b.dataset.slot) === slot));
+          updateFantasyProgress();
+        });
+      }
     });
     return row;
   }
 
   function buildFantasyForm() {
-    if (fantasyFormBuilt) return;
-    fantasyFormBuilt = true;
+    // Rebuild only when the lock pattern changes, so typing/selections survive refreshes.
+    const signature = allPickKeys().map((k) => (isPickLocked(k) ? "1" : "0")).join("");
+    if (fantasyFormSignature === signature) return;
+    fantasyFormSignature = signature;
 
-    fantasyNameInput.value = localStorage.getItem(NAME_STORAGE_KEY) || "";
+    fantasyNameInput.value = fantasyNameInput.value || localStorage.getItem(NAME_STORAGE_KEY) || "";
 
     fantasyGamesEl.innerHTML = "";
     GAMES.forEach((game) => {
@@ -685,8 +730,8 @@
       setFantasyMsg("Backend not configured yet.", true);
       return;
     }
-    if (fantasyLocked()) {
-      setFantasyMsg("Picks are locked — the deadline has passed.", true);
+    if (allPredictorLocked()) {
+      setFantasyMsg("The predictor is closed — all matches are locked.", true);
       renderFantasy();
       return;
     }
@@ -696,10 +741,9 @@
       fantasyNameInput.focus();
       return;
     }
-    const missing =
-      GAMES.filter((g) => !pickedSlot(g.id)).length + (pickedSlot(WOMENS_PICK_ID) ? 0 : 1);
+    const missing = openPickKeys().filter((k) => !pickedSlot(k)).length;
     if (missing > 0) {
-      setFantasyMsg(`Pick a winner for every match (women's included) — ${missing} still unpicked.`, true);
+      setFantasyMsg(`Pick a winner for every open match — ${missing} still unpicked.`, true);
       return;
     }
 
@@ -714,7 +758,7 @@
           setFantasyMsg(data.message || "Couldn't submit picks. Try again.", true);
           return;
         }
-        setFantasyMsg(`Picks submitted for ${name} ✓ — you can resubmit to change them until the deadline.`);
+        setFantasyMsg(`Picks submitted for ${name} ✓ — you can update open matches any time until they lock.`);
         loadResults();
       })
       .catch((err) => {
@@ -733,12 +777,17 @@
   }
 
   function updateFantasyDeadlineLine() {
-    const deadlineMs = new Date(fantasyData.deadline || CONFIG.FANTASY_DEADLINE).getTime();
-    if (fantasyLocked()) {
-      fantasyDeadlineLine.textContent = "Picks are locked";
+    if (allPredictorLocked()) {
+      fantasyDeadlineLine.textContent = "Predictor closed — all matches locked";
       return;
     }
-    fantasyDeadlineLine.textContent = `Picks lock in ${formatCountdown(deadlineMs - Date.now())}`;
+    const startMs = new Date(fantasyData.start || CONFIG.PREDICTOR_START).getTime();
+    if (Date.now() < startMs) {
+      fantasyDeadlineLine.textContent = `Games 1 & 2 lock in ${formatCountdown(startMs - Date.now())}`;
+      return;
+    }
+    const openCount = openPickKeys().length;
+    fantasyDeadlineLine.textContent = `Rolling locks · ${openCount} pick${openCount === 1 ? "" : "s"} still open`;
   }
 
   function computeFantasyLeaderboard() {
@@ -774,25 +823,32 @@
 
   function renderFantasy() {
     updateFantasyDeadlineLine();
-    const locked = fantasyLocked();
+    const allLocked = allPredictorLocked();
 
-    fantasyFormCard.hidden = locked;
-    fantasyLockedCard.hidden = !locked;
+    fantasyFormCard.hidden = allLocked;
+    fantasyLockedCard.hidden = !allLocked;
 
-    if (!locked) {
+    if (!allLocked) {
       buildFantasyForm();
+    } else {
+      fantasyEntryCount.textContent = String(fantasyData.entries.length);
+    }
+
+    // Names (and locked-match picks) are revealed once play starts; before
+    // that show only the anonymous entry count.
+    const revealed =
+      fantasyData.namesRevealed === true || fantasyData.entries.some((e) => e && e.name);
+    if (!revealed) {
       const n = fantasyData.entries.length;
       fantasyLeaderboard.innerHTML = `
-        <p class="hint">The leaderboard appears once picks lock — entrants stay anonymous until then.
+        <p class="hint">The leaderboard goes live when play starts — entrants stay anonymous until then.
         ${n > 0 ? `<strong>${n}</strong> ${n === 1 ? "entry" : "entries"} so far.` : "No entries yet — be the first!"}</p>
       `;
       return;
     }
 
-    fantasyEntryCount.textContent = String(fantasyData.entries.length);
-
     if (fantasyData.entries.length === 0) {
-      fantasyLeaderboard.innerHTML = `<p class="hint">No fantasy entries were submitted.</p>`;
+      fantasyLeaderboard.innerHTML = `<p class="hint">No predictor entries were submitted.</p>`;
       return;
     }
 
@@ -854,42 +910,51 @@
     bettingProgress.classList.toggle("over-budget", total > BET_BUDGET || wTotal > WOMENS_BET_BUDGET);
   }
 
-  function betRow(name, max) {
+  function betRow(name, max, disabled) {
     const row = document.createElement("div");
-    row.className = "bet-row";
+    row.className = "bet-row" + (disabled ? " bet-row-locked" : "");
     row.innerHTML = `
       <label class="bet-player-name">${escapeHtml(name)}</label>
       <div class="bet-amount-wrap">
         <span class="bet-currency">$</span>
-        <input type="number" class="bet-input" min="0" max="${max}" step="1" placeholder="0"
+        <input type="number" class="bet-input" min="0" max="${max}" step="1" placeholder="0" ${disabled ? "disabled" : ""}
           value="${myBets[name] ? Math.round(Number(myBets[name])) : ""}" aria-label="Bet on ${escapeHtml(name)}">
       </div>
     `;
     const input = row.querySelector(".bet-input");
-    input.addEventListener("input", () => {
-      const v = Math.max(0, Math.round(Number(input.value)) || 0);
-      if (v === 0) delete myBets[name];
-      else myBets[name] = v;
-      localStorage.setItem(BETS_STORAGE_KEY, JSON.stringify(myBets));
-      updateBettingProgress();
-    });
+    if (!disabled) {
+      input.addEventListener("input", () => {
+        const v = Math.max(0, Math.round(Number(input.value)) || 0);
+        if (v === 0) delete myBets[name];
+        else myBets[name] = v;
+        localStorage.setItem(BETS_STORAGE_KEY, JSON.stringify(myBets));
+        updateBettingProgress();
+      });
+    }
     return row;
   }
 
-  function buildBettingForm() {
-    if (bettingFormBuilt) return;
-    bettingFormBuilt = true;
+  let bettingFormSignature = null;
 
-    bettingNameInput.value = localStorage.getItem(NAME_STORAGE_KEY) || "";
+  function buildBettingForm() {
+    // Rebuild only when the women's lock flips, so in-progress input survives refreshes.
+    const signature = womensBetLocked() ? "w1" : "w0";
+    if (bettingFormSignature === signature) return;
+    bettingFormSignature = signature;
+
+    bettingNameInput.value = bettingNameInput.value || localStorage.getItem(NAME_STORAGE_KEY) || "";
 
     bettingPlayersEl.innerHTML = "";
     ALL_PLAYERS.forEach((player) => {
-      bettingPlayersEl.appendChild(betRow(player, BET_BUDGET));
+      bettingPlayersEl.appendChild(betRow(player, BET_BUDGET, false));
     });
 
-    bettingWomensEl.innerHTML = "";
+    const wLocked = womensBetLocked();
+    bettingWomensEl.innerHTML = wLocked
+      ? '<p class="hint">🔒 The women\'s side bet is closed — the showcase is underway.</p>'
+      : "";
     WOMENS_TEAMS.forEach((team) => {
-      bettingWomensEl.appendChild(betRow(team, WOMENS_BET_BUDGET));
+      bettingWomensEl.appendChild(betRow(team, WOMENS_BET_BUDGET, wLocked));
     });
 
     updateBettingProgress();
@@ -905,7 +970,7 @@
       setBettingMsg("Backend not configured yet.", true);
       return;
     }
-    if (fantasyLocked()) {
+    if (bettingLocked()) {
       setBettingMsg("Betting is closed — the deadline has passed.", true);
       renderBetting();
       return;
@@ -917,7 +982,7 @@
       return;
     }
     const total = myBetsTotal();
-    const wTotal = womensBetsTotal();
+    const wTotal = womensBetLocked() ? 0 : womensBetsTotal();
     if (total + wTotal <= 0) {
       setBettingMsg("Place at least $1 on someone.", true);
       return;
@@ -926,7 +991,7 @@
       setBettingMsg(`You only have $${BET_BUDGET} to spread across the players — you've allocated $${total}.`, true);
       return;
     }
-    if (wTotal > WOMENS_BET_BUDGET) {
+    if (!womensBetLocked() && wTotal > WOMENS_BET_BUDGET) {
       setBettingMsg(`The women's side pot is only $${WOMENS_BET_BUDGET} — you've allocated $${wTotal}.`, true);
       return;
     }
@@ -942,7 +1007,7 @@
           setBettingMsg(data.message || "Couldn't place bets. Try again.", true);
           return;
         }
-        setBettingMsg(`Bets placed for ${name} ✓ — $${total + wTotal} in play. Resubmit to change them until the deadline.`);
+        setBettingMsg(`Bets placed for ${name} ✓ — $${total + wTotal} in play. Resubmit to change them until betting closes.`);
         loadResults();
       })
       .catch((err) => {
@@ -1065,7 +1130,7 @@
   }
 
   function renderPayoutBoard() {
-    const locked = fantasyLocked();
+    const locked = bettingLocked();
 
     if (!locked) {
       payoutStageTag.textContent = "After Lock";
@@ -1157,12 +1222,13 @@
   }
 
   function renderBetting() {
-    const locked = fantasyLocked();
+    const locked = bettingLocked();
     if (locked) {
       bettingDeadlineLine.textContent = "Betting is closed";
     } else {
-      const deadlineMs = new Date(betsData.deadline || CONFIG.FANTASY_DEADLINE).getTime();
-      bettingDeadlineLine.textContent = `Betting closes in ${formatCountdown(deadlineMs - Date.now())}`;
+      const deadlineMs = new Date(betsData.deadline || CONFIG.BETTING_DEADLINE).getTime();
+      const wNote = womensBetLocked() ? " · women's side bet closed" : "";
+      bettingDeadlineLine.textContent = `Betting closes in ${formatCountdown(deadlineMs - Date.now())}${wNote}`;
     }
 
     bettingFormCard.hidden = locked;
@@ -1269,8 +1335,9 @@
 
         if (data.fantasy) {
           fantasyData = {
-            locked: data.fantasy.locked === true,
-            deadline: data.fantasy.deadline || CONFIG.FANTASY_DEADLINE,
+            start: data.fantasy.start || CONFIG.PREDICTOR_START,
+            lockedGames: data.fantasy.lockedGames || {},
+            namesRevealed: data.fantasy.namesRevealed === true,
             entries: data.fantasy.entries || [],
             pickCounts: data.fantasy.pickCounts || {}
           };
@@ -1279,7 +1346,8 @@
         if (data.bets) {
           betsData = {
             locked: data.bets.locked === true,
-            deadline: data.bets.deadline || CONFIG.FANTASY_DEADLINE,
+            wLocked: data.bets.wLocked === true,
+            deadline: data.bets.deadline || CONFIG.BETTING_DEADLINE,
             entries: data.bets.entries || [],
             totals: data.bets.totals || {}
           };
@@ -1317,7 +1385,7 @@
     setInterval(loadResults, AUTO_REFRESH_MS);
   }
   setInterval(() => {
-    updateFantasyDeadlineLine();
+    renderFantasy();
     renderBetting();
   }, 30000);
 })();

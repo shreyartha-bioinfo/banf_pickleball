@@ -1067,3 +1067,26 @@ tr.qualify .rank-chip {
   .layout { grid-template-columns: 1fr; }
   .site-header::before { opacity: 0.06; }
 }
+
+/* ---------- Rolling lock states (predictor pairs / women's side bet) ---------- */
+
+.pick-row-locked { opacity: 0.65; }
+
+.pick-btn:disabled {
+  cursor: not-allowed;
+  background: #f2f4f6;
+  color: var(--text-muted);
+}
+
+.pick-row-locked .pick-btn.selected:disabled {
+  background: var(--green-tint);
+  color: var(--green);
+}
+
+.bet-row-locked { opacity: 0.65; }
+
+.bet-input:disabled {
+  cursor: not-allowed;
+  background: #f2f4f6;
+  color: var(--text-muted);
+}

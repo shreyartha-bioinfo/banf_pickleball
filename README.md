@@ -124,14 +124,19 @@ the `GW` column of `FantasyPicks` and scored from the `W` row of the `Showcase` 
 
 - Participants enter their name, tap a team in each game, and submit. Entries are
   stored in a `FantasyPicks` tab of the same Google Sheet (auto-created).
-- Resubmitting with the same name before the deadline replaces that person's picks.
-- Picks lock at **10:00 AM US Eastern, Sunday July 12, 2026** — enforced server-side
-  in Apps Script, not just hidden in the page. To change the deadline, update
-  `FANTASY_DEADLINE` in `js/config.js` and `ENTRY_DEADLINE` in `apps-script/Code.gs`
-  (they must match), then redeploy the Apps Script. The same deadline governs betting.
-- Everyone's picks stay hidden until the deadline passes; after lock, the form is
-  replaced by a leaderboard scoring one point per correctly picked winner (only
-  completed games count, ties share a rank), updating live as results are entered.
+- **Picks lock two games at a time (rolling)**: Games 1 & 2 lock at first serve —
+  **9:30 AM US Eastern, Sunday July 12, 2026** (`PREDICTOR_START` in `js/config.js`
+  and `apps-script/Code.gs`, keep them matching) — and each later pair (3&4, 5&6, …)
+  locks the moment the previous pair's results land in the `Scores` tab. The women's
+  showcase pick locks when Games 7 & 8 are done (the showcase follows them) or when
+  its own result is entered. A pair whose own score appears is locked regardless.
+- Enforced server-side: locked picks are frozen verbatim even on resubmit, and open
+  picks can be joined or updated by anyone at any time (resubmitting the same name
+  replaces open picks only — late joiners simply can't score already-locked games).
+- Entrant names stay anonymous until play starts; from 9:30 AM the leaderboard runs
+  live — one point per correctly picked winner (only completed matches count, ties
+  share a rank) — and each pair's picks are revealed as that pair locks. Open picks
+  stay private.
 
 ## Betting game
 
@@ -142,7 +147,10 @@ players they think will win the tournament:
   as long as the total stays within the budget (whole dollars, at least $1).
 - Bets land in a `Bets` tab of the Sheet (auto-created, one column per player).
   Resubmitting with the same name before the deadline replaces that person's bets.
-- Betting closes at the same server-enforced deadline as the Predictor.
+- Betting closes at **12:00 PM (noon) US Eastern, Sunday July 12, 2026** —
+  server-enforced (`BETTING_DEADLINE` in `js/config.js` and `apps-script/Code.gs`).
+  The women's $20 side pot additionally freezes when the showcase starts (Games 7 & 8
+  scored, or the `W` result entered), so nobody can bet on a match already played.
 - Individual allocations stay private until the deadline — before lock the API only
   exposes per-player totals, which feed **The Money Cloud**: a live word cloud where a
   player's name grows with the total money placed on them (hover a name for its exact

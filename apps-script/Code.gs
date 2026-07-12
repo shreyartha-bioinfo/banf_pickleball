@@ -39,8 +39,14 @@ const GAMES = [
   { id: 16, court: "B", time: "12:10 PM", team1: ["Saikat Natta", "Suman Ghosh"], team2: ["Swarnendu Sen", "Dipra Ghosh"] }
 ];
 
-// Predictor picks and bets lock at this moment (server-enforced). -04:00 = US Eastern in July.
-const ENTRY_DEADLINE = "2026-07-12T10:00:00-04:00";
+// Rolling predictor: the first pair of games locks when play starts; each later
+// pair locks as soon as the previous pair's results are entered. The women's
+// showcase pick locks when Games 7 & 8 are scored (the showcase follows them).
+// -04:00 = US Eastern in July.
+const PREDICTOR_START = "2026-07-12T09:30:00-04:00";
+// Betting locks at noon (server-enforced); the women's side bet additionally
+// locks when the showcase starts (rolling, like the women's pick).
+const BETTING_DEADLINE = "2026-07-12T12:00:00-04:00";
 
 const BET_BUDGET = 100; // virtual dollars per bettor (men's tournament)
 
@@ -96,22 +102,76 @@ const STATS_HEADERS = [
   "Aces", "FaultServes", "Absent", "ProxyName"
 ];
 
+// Which games have both scores entered, from the Scores sheet rows.
+function scoredMap_(scoresRows) {
+  const scored = {};
+  scoresRows.forEach(function (row) {
+    if (row.Team1Score !== "" && row.Team1Score !== null &&
+        row.Team2Score !== "" && row.Team2Score !== null) {
+      scored[row.GameId] = true;
+    }
+  });
+  return scored;
+}
+
+function pairIds_(k) {
+  return GAMES.filter((g) => Math.ceil(g.id / 2) === k).map((g) => g.id);
+}
+
+// Rolling pair locks: pair 1 locks at PREDICTOR_START; pair k locks when every
+// game of pair k-1 is scored. A pair with one of its own games scored is locked
+// regardless. The women's showcase pick ("W") locks when Games 7 & 8 are done
+// (the showcase follows them) or once its own result is entered.
+function lockedGamesMap_(scored, showcaseRows) {
+  const locked = {};
+  const numPairs = Math.ceil(GAMES.length / 2);
+  for (let k = 1; k <= numPairs; k++) {
+    const ids = pairIds_(k);
+    let isLocked = ids.some((id) => scored[id]);
+    if (!isLocked) {
+      if (k === 1) {
+        isLocked = Date.now() >= new Date(PREDICTOR_START).getTime();
+      } else {
+        isLocked = pairIds_(k - 1).every((id) => scored[id]);
+      }
+    }
+    ids.forEach((id) => (locked[id] = isLocked));
+  }
+
+  let wLocked = pairIds_(4).every((id) => scored[id]);
+  if (!wLocked) {
+    const wRow = (showcaseRows || []).filter((r) => String(r.MatchId) === WOMENS_PICK_ID)[0];
+    wLocked =
+      !!wRow &&
+      wRow.Team1Score !== "" && wRow.Team1Score !== null &&
+      wRow.Team2Score !== "" && wRow.Team2Score !== null;
+  }
+  locked[WOMENS_PICK_ID] = wLocked;
+
+  return locked;
+}
+
 function doGet(e) {
   const scoresSheet = getOrCreateScoresSheet_();
   const statsSheet = getOrCreateStatsSheet_();
   const fantasySheet = getOrCreateFantasySheet_();
   const betsSheet = getOrCreateBetsSheet_();
 
-  const locked = Date.now() >= new Date(ENTRY_DEADLINE).getTime();
+  const scoresRows = sheetToObjects_(scoresSheet);
+  const showcaseRows = sheetToObjects_(getOrCreateShowcaseSheet_());
+  const lockedGames = lockedGamesMap_(scoredMap_(scoresRows), showcaseRows);
+  const namesRevealed = Date.now() >= new Date(PREDICTOR_START).getTime();
   const fantasyRows = sheetToObjects_(fantasySheet);
 
-  // Before lock, entries are anonymous placeholders (count only) — names, picks
-  // and bets are all revealed together once the deadline passes.
+  // Entrants stay anonymous until play starts; after that, only picks for
+  // locked games are revealed (open picks stay private).
   const entries = fantasyRows.map((row) => {
-    if (!locked) return {};
+    if (!namesRevealed) return {};
     const entry = { name: row.Name, submittedAt: row.SubmittedAt, picks: {} };
-    GAMES.forEach((g) => (entry.picks[g.id] = row["G" + g.id]));
-    entry.picks[WOMENS_PICK_ID] = row["GW"];
+    GAMES.forEach((g) => {
+      if (lockedGames[g.id]) entry.picks[g.id] = row["G" + g.id];
+    });
+    if (lockedGames[WOMENS_PICK_ID]) entry.picks[WOMENS_PICK_ID] = row["GW"];
     return entry;
   });
 
@@ -129,27 +189,41 @@ function doGet(e) {
     if (wv === 1 || wv === 2) pickCounts[WOMENS_PICK_ID][wv] += 1;
   });
 
-  // Bets: aggregate totals always; individual allocations only after lock
-  // (needed for the payout board — private while betting is open).
+  // Bets: aggregate totals always; individual allocations only after betting
+  // locks at noon (needed for the payout board — private while betting is open).
   // Women's Doubles pairs ride along as two extra "names" in the same maps.
+  const betsLocked = Date.now() >= new Date(BETTING_DEADLINE).getTime();
   const betNames = playersSorted_().concat(WOMENS_TEAMS);
   const totals = {};
   betNames.forEach((p) => (totals[p] = 0));
   const betEntries = sheetToObjects_(betsSheet).map((row) => {
     betNames.forEach((p) => (totals[p] += Number(row[p]) || 0));
-    if (!locked) return {};
+    if (!betsLocked) return {};
     const entry = { name: row.Name, submittedAt: row.SubmittedAt, bets: {} };
     betNames.forEach((p) => (entry.bets[p] = Number(row[p]) || 0));
     return entry;
   });
 
   return jsonResponse_({
-    scores: sheetToObjects_(scoresSheet),
+    scores: scoresRows,
     playerStats: sheetToObjects_(statsSheet),
     knockouts: sheetToObjects_(getOrCreateKnockoutsSheet_()),
-    showcase: sheetToObjects_(getOrCreateShowcaseSheet_()),
-    fantasy: { locked: locked, deadline: ENTRY_DEADLINE, entries: entries, pickCounts: pickCounts },
-    bets: { locked: locked, deadline: ENTRY_DEADLINE, budget: BET_BUDGET, entries: betEntries, totals: totals }
+    showcase: showcaseRows,
+    fantasy: {
+      start: PREDICTOR_START,
+      lockedGames: lockedGames,
+      namesRevealed: namesRevealed,
+      entries: entries,
+      pickCounts: pickCounts
+    },
+    bets: {
+      locked: betsLocked,
+      wLocked: lockedGames[WOMENS_PICK_ID] === true,
+      deadline: BETTING_DEADLINE,
+      budget: BET_BUDGET,
+      entries: betEntries,
+      totals: totals
+    }
   });
 }
 
@@ -160,10 +234,7 @@ function doPost(e) {
   return jsonResponse_({ status: "error", message: "Unknown action" });
 }
 
-function validateEntrant_(payload) {
-  if (Date.now() >= new Date(ENTRY_DEADLINE).getTime()) {
-    return "Entries are locked — the deadline has passed.";
-  }
+function validateName_(payload) {
   const name = String(payload.name || "").trim();
   if (!name || name.length > 40) {
     return "Enter a name (max 40 characters).";
@@ -171,32 +242,78 @@ function validateEntrant_(payload) {
   return null;
 }
 
+function currentLockedGames_() {
+  const scored = scoredMap_(sheetToObjects_(getOrCreateScoresSheet_()));
+  const showcaseRows = sheetToObjects_(getOrCreateShowcaseSheet_());
+  return lockedGamesMap_(scored, showcaseRows);
+}
+
 function handlePredictorPost_(payload) {
-  const entrantError = validateEntrant_(payload);
-  if (entrantError) return jsonResponse_({ status: "error", message: entrantError });
+  const nameError = validateName_(payload);
+  if (nameError) return jsonResponse_({ status: "error", message: nameError });
   const name = String(payload.name).trim();
 
-  const picks = payload.picks || {};
-  for (let i = 0; i < GAMES.length; i++) {
-    const v = Number(picks[GAMES[i].id]);
-    if (v !== 1 && v !== 2) {
-      return jsonResponse_({ status: "error", message: "Pick a winner for every match." });
-    }
-  }
-  const wv = Number(picks[WOMENS_PICK_ID]);
-  if (wv !== 1 && wv !== 2) {
-    return jsonResponse_({ status: "error", message: "Pick a winner for the women's doubles too." });
+  const lockedGames = currentLockedGames_();
+  const allKeys = GAMES.map((g) => g.id).concat([WOMENS_PICK_ID]);
+  if (allKeys.every((k) => lockedGames[k])) {
+    return jsonResponse_({ status: "error", message: "The predictor is closed — all matches are locked." });
   }
 
-  const row = [name, new Date()].concat(GAMES.map((g) => Number(picks[g.id]))).concat([wv]);
-  upsertRowByName_(getOrCreateFantasySheet_(), name, row);
+  const picks = payload.picks || {};
+  for (let i = 0; i < allKeys.length; i++) {
+    const k = allKeys[i];
+    if (lockedGames[k]) continue; // locked picks are preserved server-side, not validated
+    const v = Number(picks[k]);
+    if (v !== 1 && v !== 2) {
+      return jsonResponse_({ status: "error", message: "Pick a winner for every open match." });
+    }
+  }
+
+  // Merge: locked matches keep whatever this entrant already had (blank for new
+  // entrants — locked matches can't be picked late); open matches take the new picks.
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = getOrCreateFantasySheet_();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    let rowIndex = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === name.toLowerCase()) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+    const existing = {};
+    if (rowIndex !== -1) {
+      headers.forEach((h, i) => (existing[h] = data[rowIndex - 1][i]));
+    }
+    const colFor = (k) => (k === WOMENS_PICK_ID ? "GW" : "G" + k);
+    const row = [name, new Date()].concat(
+      allKeys.map((k) =>
+        lockedGames[k] ? (rowIndex !== -1 ? existing[colFor(k)] : "") : Number(picks[k])
+      )
+    );
+    if (rowIndex === -1) {
+      sheet.appendRow(row);
+    } else {
+      sheet.getRange(rowIndex, 1, 1, row.length).setValues([row]);
+    }
+  } finally {
+    lock.releaseLock();
+  }
+
   return jsonResponse_({ status: "ok" });
 }
 
 function handleBetsPost_(payload) {
-  const entrantError = validateEntrant_(payload);
-  if (entrantError) return jsonResponse_({ status: "error", message: entrantError });
+  const nameError = validateName_(payload);
+  if (nameError) return jsonResponse_({ status: "error", message: nameError });
+  if (Date.now() >= new Date(BETTING_DEADLINE).getTime()) {
+    return jsonResponse_({ status: "error", message: "Betting is closed — the deadline has passed." });
+  }
   const name = String(payload.name).trim();
+  const wLocked = currentLockedGames_()[WOMENS_PICK_ID] === true;
 
   const players = playersSorted_();
   const bets = payload.bets || {};
@@ -214,21 +331,51 @@ function handleBetsPost_(payload) {
     womensTotal += v;
     return v;
   });
-  if (amounts.some(isNaN) || womensAmounts.some(isNaN)) {
+  if (amounts.some(isNaN) || (!wLocked && womensAmounts.some(isNaN))) {
     return jsonResponse_({ status: "error", message: "Bet amounts must be positive whole dollars." });
   }
-  if (total + womensTotal <= 0) {
+  if (total + (wLocked ? 0 : womensTotal) <= 0) {
     return jsonResponse_({ status: "error", message: "Place at least $1 on someone." });
   }
   if (total > BET_BUDGET) {
     return jsonResponse_({ status: "error", message: "You only have $" + BET_BUDGET + " to spread across the players — total is $" + total + "." });
   }
-  if (womensTotal > WOMENS_BET_BUDGET) {
+  if (!wLocked && womensTotal > WOMENS_BET_BUDGET) {
     return jsonResponse_({ status: "error", message: "The women's side pot is only $" + WOMENS_BET_BUDGET + " — total is $" + womensTotal + "." });
   }
 
-  const row = [name, new Date()].concat(amounts).concat(womensAmounts);
-  upsertRowByName_(getOrCreateBetsSheet_(), name, row);
+  // Once the showcase starts, women's side bets are frozen: existing entrants
+  // keep their stored women's amounts, new entrants get none.
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = getOrCreateBetsSheet_();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    let rowIndex = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === name.toLowerCase()) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+    const existing = {};
+    if (rowIndex !== -1) {
+      headers.forEach((h, i) => (existing[h] = data[rowIndex - 1][i]));
+    }
+    const finalWomens = wLocked
+      ? WOMENS_TEAMS.map((t) => (rowIndex !== -1 ? Number(existing[t]) || 0 : 0))
+      : womensAmounts;
+    const row = [name, new Date()].concat(amounts).concat(finalWomens);
+    if (rowIndex === -1) {
+      sheet.appendRow(row);
+    } else {
+      sheet.getRange(rowIndex, 1, 1, row.length).setValues([row]);
+    }
+  } finally {
+    lock.releaseLock();
+  }
+
   return jsonResponse_({ status: "ok" });
 }
 
