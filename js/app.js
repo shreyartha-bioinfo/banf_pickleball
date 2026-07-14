@@ -227,14 +227,18 @@
   }
 
   // Score of a showcase match from the Showcase sheet row, or null if not yet
-  // entered. Falls back to the Knockouts row of the same MatchId, in case the
-  // score was typed there instead.
+  // entered. Falls back to the Knockouts row of the same MatchId (in case the
+  // score was typed there instead), then to the recorded final result in
+  // SHOWCASE_BREAK.
   function showcaseScore(matchId) {
     const row = showcaseByMatch[matchId] || {};
     const s1 = normalizeScoreValue(row.Team1Score);
     const s2 = normalizeScoreValue(row.Team2Score);
     if (s1 !== undefined && s2 !== undefined) return { team1Score: s1, team2Score: s2 };
-    return knockoutScore(matchId);
+    const fromKnockouts = knockoutScore(matchId);
+    if (fromKnockouts) return fromKnockouts;
+    const match = SHOWCASE_BREAK.matches.filter((m) => m.resultId === matchId)[0];
+    return (match && match.score) || null;
   }
 
   function showcaseBreakCard() {
@@ -256,13 +260,16 @@
         } else {
           const w1 = s && s.team1Score > s.team2Score;
           const w2 = s && s.team2Score > s.team1Score;
+          // "Champions" for a pair, "Champion" for a singles player.
+          const champChip = (name) =>
+            `<span class="champion-chip">🏆 ${name.indexOf("/") !== -1 ? "Champions" : "Champion"}</span>`;
           // Betting/predictor markers only exist for the women's match.
           const isWomens = m.resultId === WOMENS_PICK_ID;
           const extras1 = isWomens ? womensBetIcons(WOMENS_TEAMS[0]) + crowdPickBadge(WOMENS_PICK_ID, 1) : "";
           const extras2 = isWomens ? womensBetIcons(WOMENS_TEAMS[1]) + crowdPickBadge(WOMENS_PICK_ID, 2) : "";
-          teams = `<span class="interlude-team${w1 ? " winner" : ""}">${escapeHtml(t1)}</span>${extras1}
+          teams = `<span class="interlude-team${w1 ? " winner" : ""}">${escapeHtml(t1)}</span>${w1 ? champChip(t1) : ""}${extras1}
             <span class="interlude-vs${s ? " score" : ""}">${s ? `${s.team1Score}–${s.team2Score}` : "vs"}</span>
-            <span class="interlude-team${w2 ? " winner" : ""}">${escapeHtml(t2)}</span>${extras2}`;
+            <span class="interlude-team${w2 ? " winner" : ""}">${escapeHtml(t2)}</span>${w2 ? champChip(t2) : ""}${extras2}`;
         }
         return `
           <div class="interlude-row">

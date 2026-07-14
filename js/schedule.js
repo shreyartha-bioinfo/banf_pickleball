@@ -33,9 +33,11 @@ const SHOWCASE_BREAK = {
     // resultId = MatchId of this match's row in the Sheet's "Showcase" tab.
     // Team names entered there override the defaults below (that's how the
     // kids 13–17 combos get filled in), and scores flip the match to Final.
-    { label: "Women's Doubles", team1: ["Lopita", "Tanima"], team2: ["Sreya", "Roopkatha"], resultId: "W" },
+    // `score` is the recorded final result, used when the Sheet has no score
+    // for the match (Sheet values still win when present).
+    { label: "Women's Doubles", team1: ["Lopita", "Tanima"], team2: ["Sreya", "Roopkatha"], resultId: "W", score: { team1Score: 9, team2Score: 11 } },
     { label: "Kids 13–17 Doubles", tbd: "Team combinations to be decided", resultId: "K1" },
-    { label: "Kids 7–13 Singles", team1: ["Oleen"], team2: ["Evaan"], resultId: "K2" }
+    { label: "Kids 7–13 Singles", team1: ["Oleen"], team2: ["Evaan"], resultId: "K2", score: { team1Score: 11, team2Score: 4 } }
   ]
 };
 

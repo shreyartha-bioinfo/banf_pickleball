@@ -418,6 +418,22 @@ h1, h2, h3 { font-family: var(--font-display); }
   vertical-align: middle;
 }
 
+.champion-chip {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  background: #fdf8e7;
+  border: 1px solid #ecd9a0;
+  border-radius: 999px;
+  padding: 0.14rem 0.55rem;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
 .team-row {
   display: flex;
   align-items: center;
